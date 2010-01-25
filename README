@@ -1,0 +1,27 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2943
+
+This is a new version from JumpInCode.vim I don't know why i can't upload a new version to the old JumpInCode page (http://www.vim.org/scripts/script.php?script_id=2770)? So I start this branch
+
+\"EN\"
+ctags and cscope plugin, more convenice way to use ctags and cscope in vim
+
+Command:
+\sy   Generate tags and cscope database from current directory
+\sc   Configure window (Take care of the help info the window below)
+                  
+Requirement:
+Unix:   ctags and cscope
+Win32: ctags.exe and cscope.exe  (win32 ctags and cscope could download from:http://code.google.com/p/easy-vim/downloads/list)
+
+\"中文  ZH\"
+自动生成并使用ctags和cscope
+
+命令：
+\sy   从当前目录生成tags和cscope.out
+\sc   配置窗口 (注意配置窗口底部的帮助信息)
+
+系统要求：
+预安装要求ctags和cscope:
+Unix:    ctags and cscope
+Win32: ctags and cscope  （win32版的ctags和cscope下载地址：http://code.google.com/p/easy-vim/downloads/list&#65289;
+
