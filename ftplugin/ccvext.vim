@@ -59,7 +59,8 @@ let s:ccve_vars = {
                 \'slash':'/', 'HOME':$HOME . '/.symbs', 'quation':'', 'list_f':$HOME . '/.symbs/.l', 'env_f':$HOME . '/.symbs/.evn'
                 \},
             \'setting':{
-                \'tags_l':['./tags'],'cscope.out_l':[]
+                \'tags_l':['./tags'],
+                \'cscope.out_l':[{'idx':0}, {0:'noused'}]
                 \}
             \}
 
@@ -76,8 +77,8 @@ endif
 "let s:postfix = ['"*.java"']
 "let s:postfix = ['"*.py"']
 "let s:postfix = ['"*.html"', '"*.xml"']
-let s:postfix = ['"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
-"let s:postfix = ['"*.java', '"*.py"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
+"let s:postfix = ['"*.java"', "*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
+let s:postfix = ['"*.java"', '"*.py"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
 
 ":au BufReadPre *.h echo 'run here'
 
@@ -153,10 +154,6 @@ function! AddSymbs (symbs)
                 echo 'DEBUG: tags:' . l:symbs_t . ' already set.'
             endif
         endif
-        if s:ccve_debug == 'true'
-            echo 'DEBUG: tags_l info:' 
-            echo s:ccve_vars['setting']['tags_l']
-        endif
 
         let $TAGS_PATH = ''
         for l:idx in s:ccve_vars['setting']['tags_l']
@@ -167,6 +164,11 @@ function! AddSymbs (symbs)
         endif
         echo ':set tags=' . $TAGS_PATH
         :set tags=$TAGS_PATH 
+
+        if s:ccve_debug == 'true'
+            echo 'DEBUG: tags_l info:' 
+            echo s:ccve_vars['setting']['tags_l']
+        endif
     endif
 
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -178,14 +180,15 @@ function! AddSymbs (symbs)
         echomsg 'Cscope.out not found'
     else
         "if cscope.out already set, do nothing
-        for l:idx in s:ccve_vars['setting']['cscope.out_l']
+        for l:idx in keys(s:ccve_vars['setting']['cscope.out_l'][1])
             "get dir name:
             "eg: 
             "   l:idx = '/home/user/.symbs/boost/cscope.out'
             "   l:cmp_s = boost
 
             "remove '/cscope.out'
-            let l:cmp_s = substitute(l:idx, '\/cscope.out', '', 'g')
+            let l:cscope_d = s:ccve_vars['setting']['cscope.out_l'][1]
+            let l:cmp_s = substitute(l:cscope_d[l:idx], '\/cscope.out', '', 'g')
             "remove '/home/user/.symbs/'
             let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
 
@@ -199,23 +202,37 @@ function! AddSymbs (symbs)
                 break
             endif
         endfor
-        if s:ccve_debug == 'true'
-            echo 'DEBUG: tags_l info:' 
-            echo s:ccve_vars['setting']['cscope.out_l']
-        endif
         if l:cmp_s != l:name
             "cscope.out not alread set
             if s:ccve_debug == 'true'
                 echo 'l:symbs_c:' . l:symbs_c
             endif
-            "add record to list
-            call add (s:ccve_vars['setting']['cscope.out_l'], l:symbs_c)
+            "add record to list assume dict is not empty
+            for l:idx in keys(s:ccve_vars['setting']['cscope.out_l'][1])
+                if s:ccve_vars['setting']['cscope.out_l'][1][l:idx] == 'noused'
+                    let s:ccve_vars['setting']['cscope.out_l'][1][l:idx] = l:symbs_c
+                    break
+                endif
+                "there is no noused slot
+                if s:ccve_vars['setting']['cscope.out_l'][0]['idx'] == l:idx
+                    let l:pos = s:ccve_vars['setting']['cscope.out_l'][0]['idx']
+                    let s:ccve_vars['setting']['cscope.out_l'][0]['idx'] = l:pos + 1
+                    let s:ccve_vars['setting']['cscope.out_l'][1][l:pos + 1] = l:symbs_c
+                endif
+            endfor
+            "cscope.out dict is empty (first add)
+            "if empty(s:ccve_vars['setting']['cscope.out_l'][1])
+            "    let s:ccve_vars['setting']['cscope.out_l'][1][0] = l:symbs_c
+            "    let s:ccve_vars['setting']['cscope.out_l'][0]['idx'] = l:cpos + 1
+            "endif
             let $CSCOPE_DB = l:symbs_c
+            echo ':cscope add ' . $CSCOPE_DB
             :cs add $CSCOPE_DB
         else
             "cscope.out alread set
             echomsg 'Database [' . l:symbs_c  . ']' . ' already added'
         endif
+        call DevLogOutput ("s:ccve_vars['setting']['cscope.out_l']", s:ccve_vars['setting']['cscope.out_l'])
     endif
 endfunction
 "-----------------------------------------------------------------
@@ -285,15 +302,15 @@ function! DelSymbs (symbs, rm)
     let l:cmp_s = ""
     let l:symbs_c = s:ccve_vars[s:os]['HOME'] . '/' . l:name . '/cscope.out'
     "if cscope.out already set, do nothing
-    let l:loopIdx = 0
-    for l:idx in s:ccve_vars['setting']['cscope.out_l']
+    for l:idx in keys(s:ccve_vars['setting']['cscope.out_l'][1])
         "get dir name:
         "eg: 
         "   l:idx = '/home/user/.symbs/boost/cscope.out'
         "   l:cmp_s = boost
 
         "remove '/cscope.out'
-        let l:cmp_s = substitute(l:idx, '\/cscope.out', '', 'g')
+        let l:cscope_d = s:ccve_vars['setting']['cscope.out_l'][1]
+        let l:cmp_s = substitute(l:cscope_d[l:idx], '\/cscope.out', '', 'g')
         "remove '/home/user/.symbs/'
         let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
 
@@ -304,12 +321,12 @@ function! DelSymbs (symbs, rm)
 
         if l:cmp_s == l:name
             "cscope.out alread set, remove it
-            exec ':cs kill ' . l:loopIdx
+            echo 'exec :cs kill ' . l:idx
+            exec ':cs kill ' . l:idx
             "remove from table
-            unlet s:ccve_vars['setting']['cscope.out_l'][l:loopIdx]
+            let s:ccve_vars['setting']['cscope.out_l'][1][l:idx] = 'noused'
             break
         endif
-        let l:loopIdx = l:loopIdx + 1
     endfor
     if s:ccve_debug == 'true'
         echo 'DEBUG: tags_l info:' 
@@ -319,6 +336,7 @@ function! DelSymbs (symbs, rm)
         "cscope.out not alread set
         echomsg 'Database [' . l:symbs_c  . ']' . ' not set'
     endif
+    call DevLogOutput ("s:ccve_vars['setting']['cscope.out_l']", s:ccve_vars['setting']['cscope.out_l'])
 
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     "remove directory
@@ -572,6 +590,19 @@ function! SynchronizeSource ()
     endif
 endfunction
 "-----------------------------------------------------------------
+" Log the supplied debug message along with the time
+function! DevLogOutput (msg, list)
+    if s:ccve_debug == 'true'
+        if 'true' == 'true'
+            exec 'redir >> ' . $HOME . '/ccvext.vim.log'
+            silent echo 'DEBUG: ' . strftime('%H:%M:%S') . ': ' . a:msg . ' : ' . string(a:list)
+            redir END
+        endif
+        echo 'DEBUG: ' . strftime('%H:%M:%S') . ': ' . a:msg . ' : ' . string(a:list) . "\n"
+    endif
+endfunction
+
+"-----------------------------------------------------------------
 
 function! TestFuncE ()
     call EnvConfig (ReadConfig(s:ccve_vars[s:os]['env_f']))
@@ -597,7 +628,7 @@ endif
 :map <Leader>sc :call TestFuncE() <CR>
 "}}}
 
-"----------------------Not used developing ------------------------
+"----------------------Not used-----------------------------------
 function! AutoTraceTags (tag_s)
     if a:tag_s == ''
         return 'false'
