@@ -23,12 +23,12 @@
 "
 
 "Initialization {{{
-"if exists("g:ccvext_version")
-"    finish
-"else
-"    "set autowrite
-"    "set autoread
-"endif
+if exists("g:ccvext_version")
+    finish
+else
+    "set autowrite
+    "set autoread
+endif
 
 let g:ccvext_version = "2.0"
 
@@ -395,7 +395,7 @@ function! ExecCtags (list)
 endfunction
 "-----------------------------------------------------------------
 function! ExecCscope (list)
-    if (!executable ('ctags'))
+    if (!executable ('cscope'))
         return 'false'
     endif
     let l:cmd = 'cscope' 
