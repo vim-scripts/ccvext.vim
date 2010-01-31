@@ -41,28 +41,36 @@ endif
 
 
 "Initialization local variable platform independence {{{
-if has ('WIN32')
-    let s:pf_feature = ['\', '\', '"']
-else
-    let s:pf_feature = ['/', $HOME . '/', '']
-endif
-"}}}
 
 "let s:ccve_debug = 'true'
 let s:ccve_debug = 'false'
 
 let s:ccve_vars = {
             \'win32':{
-                \'slash':'\', 'HOME':'\.symbs', 'quation':'"', 'list_f':'\.symbs\.list', 'env_f':'\.symbs\.env'
+                \'slash':'\', 
+                \'HOME':'\.symbs', 
+                \'list_f':'\.symbs\.list', 
+                \'env_f':'\.symbs\.env'
                 \},
             \'unix':{
-                \'slash':'/', 'HOME':$HOME . '/.symbs', 'quation':'', 'list_f':$HOME . '/.symbs/.l', 'env_f':$HOME . '/.symbs/.evn'
+                \'slash':'/', 
+                \'HOME':$HOME . '/.symbs', 
+                \'list_f':$HOME . 
+                \'/.symbs/.l', 
+                \'env_f':$HOME . '/.symbs/.evn'
                 \},
             \'setting':{
                 \'tags_l':['./tags'],
                 \'cscope.out_l':[{'idx':0}, {0:'noused'}]
                 \}
             \}
+
+let s:ccc_v = {
+            \'win32':['\', '\.symbs', '\.symbs\.list', '\.symbs\.env'], 
+            \'unix':['/', '/.symbs', '/.symbs/.l', $HOME . '/.symbs/.evn'], 
+            \'setting':['./tags', [{'idx':0}, {0:'noused'}]]
+            \}
+"}}}
 
 let g:ccve_funs = {'ListCmd':{}}
 
@@ -72,18 +80,11 @@ else
     let s:os = 'unix'
 endif
 
-"echo s:ccve_vars[s:os]['find']
-
 "let s:postfix = ['"*.java"']
 "let s:postfix = ['"*.py"']
 "let s:postfix = ['"*.html"', '"*.xml"']
-"let s:postfix = ['"*.java"', "*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
+"let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
 let s:postfix = ['"*.java"', '"*.py"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
-
-":au BufReadPre *.h echo 'run here'
-
-"echo g:ccve_vars
-"echo s:postfix
 
 "Exame software environment {{{
 if !executable ('ctags')
@@ -108,7 +109,7 @@ function! AddSymbs (symbs)
         return 'false'
     endif
     "get directory name
-    let l:name  = substitute(a:symbs, '^.*/', '', 'g')
+    let l:name  = substitute(a:symbs, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
     let l:cmp_s = ""
 
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -116,7 +117,9 @@ function! AddSymbs (symbs)
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
     "tags full path
-    let l:symbs_t = s:ccve_vars[s:os]['HOME'] . '/' . l:name . '/tags'
+    let l:symbs_t = s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name . s:ccve_vars[s:os]['slash'] . 'tags'
+
+    echo l:symbs_t
 
     if filereadable (l:symbs_t) == 0
         echomsg 'Tags not found'
@@ -129,9 +132,9 @@ function! AddSymbs (symbs)
             "   l:cmp_s = boost
 
             "remove '/tags'
-            let l:cmp_s = substitute(l:idx, '\/tags', '', 'g')
+            let l:cmp_s = substitute(l:idx, '\' . s:ccve_vars[s:os]['slash'] . 'tags', '', 'g')
             "remove '/home/user/.symbs/'
-            let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
+            let l:cmp_s = substitute(l:cmp_s, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
 
             if s:ccve_debug == 'true'
                 echo 'DEBUG: l:cmp_s:' . l:cmp_s
@@ -175,7 +178,7 @@ function! AddSymbs (symbs)
     "cscope setting
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     let l:cmp_s = ""
-    let l:symbs_c = s:ccve_vars[s:os]['HOME'] . '/' . l:name . '/cscope.out'
+    let l:symbs_c = s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name . s:ccve_vars[s:os]['slash'] . 'cscope.out'
     if filereadable (l:symbs_c) == 0
         echomsg 'Cscope.out not found'
     else
@@ -188,9 +191,9 @@ function! AddSymbs (symbs)
 
             "remove '/cscope.out'
             let l:cscope_d = s:ccve_vars['setting']['cscope.out_l'][1]
-            let l:cmp_s = substitute(l:cscope_d[l:idx], '\/cscope.out', '', 'g')
+            let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:ccve_vars[s:os]['slash'] . 'cscope.out', '', 'g')
             "remove '/home/user/.symbs/'
-            let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
+            let l:cmp_s = substitute(l:cmp_s, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
 
             if s:ccve_debug == 'true'
                 echo 'DEBUG: l:cmp_s:' . l:cmp_s
@@ -235,6 +238,7 @@ function! AddSymbs (symbs)
         call DevLogOutput ("s:ccve_vars['setting']['cscope.out_l']", s:ccve_vars['setting']['cscope.out_l'])
     endif
 endfunction
+
 "-----------------------------------------------------------------
 "Delete symbs from environment
 function! DelSymbs (symbs, rm)
@@ -242,7 +246,7 @@ function! DelSymbs (symbs, rm)
         return 'false'
     endif
     "get directory name
-    let l:name  = substitute(a:symbs, '^.*/', '', 'g')
+    let l:name  = substitute(a:symbs, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
 
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     "tags setting
@@ -250,7 +254,7 @@ function! DelSymbs (symbs, rm)
     let l:cmp_s = ""
 
     "tags full path
-    let l:symbs_t = s:ccve_vars[s:os]['HOME'] . '/' . l:name . '/tags'
+    let l:symbs_t = s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name . s:ccve_vars[s:os]['slash'] . 'tags'
 
     "if tags database path already set, do nothing
     let l:loopIdx = 0
@@ -261,9 +265,9 @@ function! DelSymbs (symbs, rm)
         "   l:cmp_s = boost
 
         "remove '/tags'
-        let l:cmp_s = substitute(l:idx, '\/tags', '', 'g')
+        let l:cmp_s = substitute(l:idx, '\' . s:ccve_vars[s:os]['slash'] . 'tags', '', 'g')
         "remove '/home/user/.symbs/'
-        let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
+        let l:cmp_s = substitute(l:cmp_s, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
 
         if s:ccve_debug == 'true'
             echo 'DEBUG: l:cmp_s:' . l:cmp_s
@@ -300,7 +304,7 @@ function! DelSymbs (symbs, rm)
     "cscope setting
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     let l:cmp_s = ""
-    let l:symbs_c = s:ccve_vars[s:os]['HOME'] . '/' . l:name . '/cscope.out'
+    let l:symbs_c = s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name . s:ccve_vars[s:os]['slash'] . 'cscope.out'
     "if cscope.out already set, do nothing
     for l:idx in keys(s:ccve_vars['setting']['cscope.out_l'][1])
         "get dir name:
@@ -310,9 +314,9 @@ function! DelSymbs (symbs, rm)
 
         "remove '/cscope.out'
         let l:cscope_d = s:ccve_vars['setting']['cscope.out_l'][1]
-        let l:cmp_s = substitute(l:cscope_d[l:idx], '\/cscope.out', '', 'g')
+        let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:ccve_vars[s:os]['slash'] . 'cscope.out', '', 'g')
         "remove '/home/user/.symbs/'
-        let l:cmp_s = substitute(l:cmp_s, '^.*/', '', 'g')
+        let l:cmp_s = substitute(l:cmp_s, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
 
         if s:ccve_debug == 'true'
             echo 'DEBUG: l:cmp_s:' . l:cmp_s
@@ -344,12 +348,12 @@ function! DelSymbs (symbs, rm)
     let l:cmp_s = ""
     if a:rm == 'true'
         if s:ccve_debug == 'true'
-            echo 'remove '. s:ccve_vars[s:os]['HOME'] . '/' . l:name  . 'line from .env'
+            echo 'remove '. s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name  . 'line from .env'
         endif
         let l:l = ReadConfig(s:ccve_vars[s:os]['env_f'])
         let l:loopIdx = 0
         for l:idx in l:l
-            let l:cmp_s = substitute(l:idx, '^.*/', '', 'g')
+            let l:cmp_s = substitute(l:idx, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
             if l:cmp_s == l:name
                 unlet l:l[l:loopIdx]
                 break
@@ -358,10 +362,13 @@ function! DelSymbs (symbs, rm)
         endfor
         call writefile (l:l, s:ccve_vars[s:os]['env_f'])
         if s:ccve_debug == 'true'
-            echo 'rm -rf ' . s:ccve_vars[s:os]['HOME'] . '/' . l:name
+            echo 'rm -rf ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name
         endif
-        echo system('rm -rf ' . s:ccve_vars[s:os]['HOME'] . '/' . l:name)
-
+        if has ('win32')
+            echo system('rd /S /q ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name)
+        else
+            echo system('rm -rf ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name)
+        endif
         :close!
         call EnvConfig (ReadConfig(s:ccve_vars[s:os]['env_f']))
     endif
@@ -369,24 +376,22 @@ endfunction
 "-----------------------------------------------------------------
 
 "-----------------------------------------------------------------
+"Generate tags files
 function! ExecCtags (list)
     if (!executable ('ctags'))
         return 'false'
     endif
-    "let l:cmd = 'ctags -f ' . s:ccve_vars[s:os]['HOME'] . '/' . substitute(getcwd (), '^.*/', '', 'g') . '/tags ' . '-R --c++-kinds=+p --fields=+aiS --extra=+q --tag-relative=no' . ' -L ' . s:ccve_vars[s:os]['list_f']
-    "Current directory name
-    "substitute(getcwd (), '^.*/', '', 'g') 
     let l:cmd = 'ctags -f ' 
                 \. s:ccve_vars[s:os]['HOME'] 
-                \. '/' 
-                \. substitute(getcwd (), '^.*/', '', 'g') 
-                \. '/tags ' 
+                \. s:ccve_vars[s:os]['slash'] 
+                \. substitute(getcwd (), '^.*' . s:ccve_vars[s:os]['slash'], '', 'g') 
+                \. s:ccve_vars[s:os]['slash'] . 'tags ' 
                 \. '-R --c++-kinds=+p --fields=+aiS --extra=+q --tag-relative=no' 
                 \. ' -L ' 
                 \. s:ccve_vars[s:os]['list_f']
 
-    if 'false' == MakeDirP(s:ccve_vars[s:os]['HOME'] . '/' . substitute(getcwd (), '^.*/', '', 'g'))
-        echomsg 'Failed to create directory ' . s:ccve_vars[s:os]['HOME'] . '/' . substitute (getcwd (), '^.*/', '', 'g') . (MakeDirP returned false)'
+    if 'false' == MakeDirP(s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . substitute(getcwd (), '^.*' . s:ccve_vars[s:os]['slash'], '', 'g'))
+        echomsg 'Failed to create directory ' . s:ccve_vars[s:os]['HOME'] . '/' . substitute (getcwd (), '^.*' . s:ccve_vars[s:os]['slash'], '', 'g') . (MakeDirP returned false)'
         return 'false'
     endif
     echo l:cmd
@@ -394,6 +399,7 @@ function! ExecCtags (list)
     return 'true'
 endfunction
 "-----------------------------------------------------------------
+"Generate cscope files
 function! ExecCscope (list)
     if (!executable ('cscope'))
         return 'false'
@@ -409,36 +415,48 @@ function! ExecCscope (list)
                 \. '-f' 
                 \. ' ' 
                 \. s:ccve_vars[s:os]['HOME'] 
-                \. '/' 
-                \. substitute(getcwd (), '^.*/', '', 'g') 
-                \. '/' 
+                \. s:ccve_vars[s:os]['slash']
+                \. substitute(getcwd (), '^.*' . s:ccve_vars[s:os]['slash'], '', 'g') 
+                \. s:ccve_vars[s:os]['slash']
                 \. 'cscope.out' 
     echo l:cmd
     echo system (l:cmd)
     return 'true'
 endfunction
+
 "-----------------------------------------------------------------
+"Generate file list
 function! MakeList (dir)
     if 'true' == MakeDirP (s:ccve_vars[s:os]['HOME'])
         let l:cmd = g:ccve_funs.ListCmd[s:os](a:dir)
-        let l:cmd = l:cmd . ' ' . '| tee ' . s:ccve_vars[s:os]['list_f']
         echomsg l:cmd
         let l:list = system (l:cmd)
-        redir @a | silent! echo l:list | redir END
+        call writefile (split(l:list), s:ccve_vars[s:os]['list_f'])
+        "redir @a | silent! echo l:list | redir END
         if input ('System Prompt: Do you want to view file list?  Press [y] yes [any key to continue] no : ') == "y"
-            echo @a
-            "call input ("System Prompt: If the screen doesn't list all items completed, press [G], Press any to continue ...")
-            "echo l:list
+            "echo @a
+            echo l:list
         endif
     endif
     return l:list
 endfunction
-"-----------------------------------------------------------------
-function! g:ccve_funs.ListCmd['win32'] (dir) dict
-    echo 'Not implement'
-endfunction
-"-----------------------------------------------------------------
 
+"-----------------------------------------------------------------
+"Generate shell command
+function! g:ccve_funs.ListCmd['win32'] (dir) dict
+    let l:cmd = 'dir'
+    let l:cmd = l:cmd . ' ' . getcwd () . '\' . s:postfix[1]
+    for l:idx in s:postfix
+        let l:cmd = l:cmd . ' ' . getcwd () . '\' . l:idx
+    endfor
+    "remove all '"'
+    let l:cmd = substitute(l:cmd, '"', '', 'g')
+    let l:cmd = l:cmd . ' /b /s'
+    return l:cmd
+endfunction
+
+"-----------------------------------------------------------------
+"Generate shell command
 function! g:ccve_funs.ListCmd['unix'] (dir) dict
     "let l:cmd = '!' . 'find'
     let l:cmd = 'find'
@@ -450,6 +468,7 @@ function! g:ccve_funs.ListCmd['unix'] (dir) dict
 endfunction
 
 "-----------------------------------------------------------------
+"Create directory
 function! MakeDirP (path)
     if !isdirectory (a:path)
         "vim feature exam 
@@ -563,6 +582,7 @@ endfunction
 "}}}
 
 "-----------------------------------------------------------------
+"Synchronize source
 function! SynchronizeSource ()
     let l:l = MakeList (getcwd ())
     if (empty(l:l))
@@ -589,6 +609,7 @@ function! SynchronizeSource ()
         call WriteConfig (s:ccve_vars[s:os]['env_f'], getcwd ())
     endif
 endfunction
+
 "-----------------------------------------------------------------
 " Log the supplied debug message along with the time
 function! DevLogOutput (msg, list)
@@ -603,7 +624,6 @@ function! DevLogOutput (msg, list)
 endfunction
 
 "-----------------------------------------------------------------
-
 function! TestFuncE ()
     call EnvConfig (ReadConfig(s:ccve_vars[s:os]['env_f']))
 endfunction
@@ -627,6 +647,8 @@ endif
 :map <Leader>sy :call TestFuncS() <CR>
 :map <Leader>sc :call TestFuncE() <CR>
 "}}}
+
+":au BufReadPre *.h echo 'run here'
 
 "----------------------Not used-----------------------------------
 function! AutoTraceTags (tag_s)
@@ -673,7 +695,8 @@ function! AutoTraceTags (tag_s)
     "setlocal nomodifiable
 
     " Create a mapping to jump to the file
-    nnoremap <buffer><silent><CR> :call <SID>Test1(getline('.')) <CR>
+    let $PATTON = 'aaaaaaaaaaaaaaaaaaaaaaaaa'
+    nnoremap <buffer><silent><CR> :call Test1(getline('.'), $PATTON) <CR>
     "nnoremap <buffer><silent><ESC> :close! <CR>
 
     "move cursor to previous window
@@ -681,7 +704,8 @@ function! AutoTraceTags (tag_s)
     return 'true'
 endfunction
 
-function! <SID>Test1(line)
+function! Test1(line, cmd)
+    echo a:cmd
     "save current window number
     "let l:winnum = winnr ()
 
@@ -700,10 +724,16 @@ function! <SID>Test1(line)
 
     "get tags command
     let l:cmd_s = substitute(a:line, '^.* \$', '', 'g')
+    "remove the first '/'
+    let l:cmd_s = substitute(l:cmd_s, '^\/', '', 'g')
+    "remove the last '/'
+    let l:cmd_s = substitute(l:cmd_s, '\/$', '', 'g')
+    "escape "
     let l:cmd_s = escape(l:cmd_s, '"')
-    echo l:cmd_s
-    exec '"' . l:cmd_s . '"'
+    "escape *
+    let l:cmd_s = escape(l:cmd_s, '*')
     "echo search (l:cmd_s)
+    call cursor(search(l:cmd_s))
 
     "move cursor to previous window
     "exec 'silent!' . l:winnum . 'wincmd w'
@@ -730,7 +760,7 @@ function! GrepToBuffer(pattern)
    silent :2
 
    silent execute "nmap <Enter> 0:silent GoToLine" mainbuffer "<Enter>"
-   " silent nmap <C-G> <C-O>:bd!<Enter>
+   silent nmap <C-G> <C-O>:bd!<Enter>
 endfunction
 "command -nargs=+ Grep :call GrepToBuffer(<q-args>)
 "----------------------Not used-----------------------------------
