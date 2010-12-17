@@ -23,12 +23,12 @@
 "
 
 "Initialization {{{
-if exists("g:ccvext_version")
-    finish
-else
-    "set autowrite
-    "set autoread
-endif
+"if exists("g:ccvext_version")
+"    finish
+"else
+"    "set autowrite
+"    "set autoread
+"endif
 
 let g:ccvext_version = "2.0"
 
@@ -374,6 +374,48 @@ function! DelSymbs (symbs, rm)
     endif
 endfunction
 "-----------------------------------------------------------------
+"
+function! DelCscopeSymbs (symbs)
+    let l:name  = substitute(a:symbs, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
+    let l:cmp_s = ""
+    let l:symbs_c = s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name . s:ccve_vars[s:os]['slash'] . 'cscope.out'
+    "if cscope.out already set, do nothing
+    for l:idx in keys(s:ccve_vars['setting']['cscope.out_l'][1])
+        "get dir name:
+        "eg: 
+        "   l:idx = '/home/user/.symbs/boost/cscope.out'
+        "   l:cmp_s = boost
+
+        "remove '/cscope.out'
+        let l:cscope_d = s:ccve_vars['setting']['cscope.out_l'][1]
+        let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:ccve_vars[s:os]['slash'] . 'cscope.out', '', 'g')
+        "remove '/home/user/.symbs/'
+        let l:cmp_s = substitute(l:cmp_s, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
+
+        if s:ccve_debug == 'true'
+            echo 'DEBUG: l:cmp_s:' . l:cmp_s
+            echo 'DEBUG: l:name:' . l:name
+        endif
+
+        if l:cmp_s == l:name
+            "cscope.out alread set, remove it
+            echo 'exec :cs kill ' . l:idx
+            exec ':cs kill ' . l:idx
+            "remove from table
+            let s:ccve_vars['setting']['cscope.out_l'][1][l:idx] = 'noused'
+            break
+        endif
+    endfor
+    if s:ccve_debug == 'true'
+        echo 'DEBUG: tags_l info:' 
+        echo s:ccve_vars['setting']['cscope.out_l']
+    endif
+    if l:cmp_s != l:name
+        "cscope.out not alread set
+        echomsg 'Database [' . l:symbs_c  . ']' . ' not set'
+    endif
+    call DevLogOutput ("s:ccve_vars['setting']['cscope.out_l']", s:ccve_vars['setting']['cscope.out_l'])
+endfunction
 
 "-----------------------------------------------------------------
 "Generate tags files
@@ -420,6 +462,7 @@ function! ExecCscope (list)
                 \. s:ccve_vars[s:os]['slash']
                 \. 'cscope.out' 
     echo l:cmd
+    call DelCscopeSymbs (getcwd ())
     echo system (l:cmd)
     return 'true'
 endfunction
@@ -478,8 +521,8 @@ function! MakeDirP (path)
                         \a:path 
             return 'false'
         endif
-        "if mkdir (a:path, 'p') != 0
-        if mkdir (a:path) != 0
+        if mkdir (a:path, 'p') != 0
+        "if mkdir (a:path) != 0
             return 'true'
         else
             return 'false'
@@ -577,7 +620,7 @@ function! EnvConfig (l)
     nnoremap <buffer><silent><CR> :call AddSymbs(getline('.')) <CR>
     nnoremap <buffer><silent>d :call DelSymbs(getline('.'), 'false') <CR>
     nnoremap <buffer><silent>D :call DelSymbs(getline('.'), 'true') <CR>
-    "nnoremap <buffer><silent><ESC> :close!<CR>
+    nnoremap <buffer><silent><ESC> :close!<CR>
 endfunction
 "}}}
 
@@ -643,6 +686,14 @@ if !exists(':CCC')
 	command! -nargs=0 CCC :call TestFuncE()
 endif
 
+if !exists(':StartVTag')
+	command! -nargs=0 StartVT :call StartVirualTag ()
+endif
+
+if !exists(':StopVtag')
+	command! -nargs=0 StopVT :call StopVirualTag ()
+endif
+
 "{{{Hotkey setup
 :map <Leader>sy :call TestFuncS() <CR>
 :map <Leader>sc :call TestFuncE() <CR>
@@ -650,36 +701,77 @@ endif
 
 ":au BufReadPre *.h echo 'run here'
 
-"----------------------Not used-----------------------------------
+"--------------------------Not used-----------------------------------
+function! StartVirualTag ()
+    "ctags is necessary
+    if !executable ('ctags')
+        echomsg 'ctags error(ctags is necessary): ' . 
+                    \'Exuberant ctags (http://ctags.sf.net) ' .
+                    \ 'not found in PATH. Plugin is not full loaded.'
+        return 'false'
+    endif
+    :map <C-]> : call AutoTraceTags(expand('<cfile>')) <CR>
+    "if !has ('win32')
+    "    set mouse=a
+    "endif
+endfunction
+
+function! StopVirualTag ()
+    "if !has ('win32')
+    "    set mouse=
+    "endif
+
+    :unmap <M-]>
+
+    exec 'silent' . bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd')) . ' wincmd w'
+    if winnr () == bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd'))
+        close!
+    endif
+
+    exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
+    if winnr () == bufwinnr(s:deamon_wnd)
+        close!
+    endif
+endfunction
+
+"-----------------------------------------------------------------
 function! AutoTraceTags (tag_s)
+    "ctags is necessary
+    if !executable ('ctags')
+        return 'false'
+    endif
+
     if a:tag_s == ''
         return 'false'
     endif
+
+    "let s:deamon_wnd = 'Help Press entern to view source snippet'
+    let s:deamon_wnd = 'Help'
 
     "save current window number
     let l:winnum = winnr ()
 
     "If the list window is open
-    if bufwinnr('tag0_window') == -1
-        "open tag0_window
-        exec 'silent! botright ' . 8 . 'split ' . 'tag0_window'
-        
-        "open tag1_window
-        "exec 'silent! rightbelow ' . 8 . 'split' . 'tag1_window'
+    if bufwinnr(s:deamon_wnd) == -1
+        "open s:deamon_wnd
+        exec 'silent! botright ' . 10 . 'split ' . s:deamon_wnd
+        "local buffer initial
+        let w:snippet_wnd = -1 
+        let w:main_wnd    = l:winnum
     endif
 
-    "jump to tag0_window
-    exec 'silent!' . bufwinnr ('tag0_window') . ' wincmd w'
+    "jump to s:deamon_wnd
+    exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
 
-    let l:tags_l = taglist (a:tag_s)
+    let s:tags_l = taglist (a:tag_s)
 
     let l:put_l  = []
-    for l:idx in l:tags_l
-        call add (l:put_l, l:idx['filename'] . ' $' . l:idx['cmd'])
+    for l:idx in s:tags_l
+        call add (l:put_l, l:idx['filename'])
     endfor
 
     setlocal modifiable
-    if winnr () == bufwinnr('tag0_window') || winnr () == bufwinnr('tag1_window')
+    if winnr () == bufwinnr(s:deamon_wnd)
         set number
         exec 'normal ggdG'
         0put = l:put_l
@@ -688,64 +780,95 @@ function! AutoTraceTags (tag_s)
     " Mark the buffer as scratch
     setlocal buftype=nofile
     setlocal bufhidden=delete
-    "setlocal noswapfile
-    "setlocal nowrap
-    "setlocal nobuflisted
-    "normal! gg
-    "setlocal nomodifiable
+    setlocal noswapfile
+    setlocal nowrap
+    setlocal nobuflisted
+    normal!  gg
+    setlocal nomodifiable
 
     " Create a mapping to jump to the file
-    let $PATTON = 'aaaaaaaaaaaaaaaaaaaaaaaaa'
-    nnoremap <buffer><silent><CR> :call Test1(getline('.'), $PATTON) <CR>
-    "nnoremap <buffer><silent><ESC> :close! <CR>
-
-    "move cursor to previous window
-    exec 'silent!' . l:winnum . 'wincmd w'
-    return 'true'
-endfunction
-
-function! Test1(line, cmd)
-    echo a:cmd
-    "save current window number
-    "let l:winnum = winnr ()
-
-    "jump to tag0_window
-    exec 'silent!' . bufwinnr ('tag0_window') . ' wincmd w'
-    "make sure cursor is in tag0_window
-    if winnr () != bufwinnr('tag0_window')
-        return 'false'
-    endif
-
-    "get file name
-    let l:filename = substitute (a:line, ' \$.*$', '', 'g')
-    "open tag1_window
-    exec 'vertical bel split' . l:filename
-    set number
-
-    "get tags command
-    let l:cmd_s = substitute(a:line, '^.* \$', '', 'g')
-    "remove the first '/'
-    let l:cmd_s = substitute(l:cmd_s, '^\/', '', 'g')
-    "remove the last '/'
-    let l:cmd_s = substitute(l:cmd_s, '\/$', '', 'g')
-    "escape "
-    let l:cmd_s = escape(l:cmd_s, '"')
-    "escape *
-    let l:cmd_s = escape(l:cmd_s, '*')
-    "echo search (l:cmd_s)
-    call cursor(search(l:cmd_s))
+    nnoremap <buffer><silent><CR> :call SourceSnippet() <CR>
+    nnoremap <buffer><silent><ESC> :call <SID>MagicFunc1 ()<CR>
+    "nnoremap <buffer><2-LeftMouse> :call SourceSnippet()<CR>
 
     "move cursor to previous window
     "exec 'silent!' . l:winnum . 'wincmd w'
     return 'true'
 endfunction
 
+function! SourceSnippet()
+    "jump to s:deamon_wnd window
+    exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
+    "make sure cursor is in s:deamon_wnd
+    if winnr () != bufwinnr(s:deamon_wnd)
+        "Error window status
+        call DevLogOutput ('SystemError:', 'Error window status')
+        return
+    endif
+
+    if -1 == bufwinnr(s:deamon_wnd)
+        "Unhandled error occur.
+        call DevLogOutput ('SystemError:', 'Unhandled error occur')
+        return 
+    endif
+
+    let l:new_line = getline('.')
+    exec 'silent!' . ' ' . getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd') . ' wincmd w'
+    echo 'exec ' . 'silent!' . ' ' . getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd') . ' wincmd w'
+
+    if winnr() != getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd')
+        exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
+        exec 'vertical bel split' . ' ' . l:new_line
+        "setlocal buftype=nofile
+        "setlocal bufhidden=delete
+        "setlocal noswapfile
+        "setlocal nowrap
+        "setlocal nobuflisted
+        "setlocal nomodifiable
+    endif
+
+    "open source code
+    exec 'e' . ' ' . l:new_line
+    call setwinvar (bufwinnr(s:deamon_wnd), 'snippet_wnd', bufwinnr(l:new_line))
+    nnoremap <buffer><silent><ESC> :call <SID>MagicFunc0 () <CR>
+    nnoremap <buffer><silent><Enter> :call <SID>MagicFunc2 () <CR>
+    set number
+
+    let l:cmd_s = 'v_null'
+    for l:idx in s:tags_l
+        if l:idx['filename'] == l:new_line
+            let l:cmd_s = matchstr(l:idx['cmd'], '\^.*\$')
+        endif
+    endfor
+    let l:cmd_s = escape(escape(l:cmd_s, '*'), '"')
+
+    call search (l:cmd_s)
+endfunction
+
+fu! <SID>MagicFunc0 ()
+    exec 'silent!' . ' ' . bufwinnr(s:deamon_wnd) . ' wincmd w'
+endf
+
+fu! <SID>MagicFunc1 ()
+    let l:nu = getwinvar(bufwinnr(s:deamon_wnd), 'main_wnd')
+    exec 'silent!' . ' ' l:nu . ' wincmd w'
+endf
+
+fu! <SID>MagicFunc2 ()
+    let l:bufnr = bufnr ('%')
+    call setwinvar (bufwinnr(s:deamon_wnd), 'snippet_wnd', '-1')
+    exec 'close!'
+    exec getwinvar(bufwinnr(s:deamon_wnd), 'main_wnd') . ' wincmd w'
+    exec 'b' . ' ' . l:bufnr
+    nmapclear <buffer>
+endf
+
 function! GoToLine(mainbuffer)
    let linenumber = expand("<cword>")
    silent bd!
    silent execute "buffer" a:mainbuffer
    silent execute ":"linenumber
-   silent nunmap <Enter>
+   nunmap <Enter>
 endfunction
 "command -nargs=1 GoToLine :call GoToLine(<f-args>)
 
@@ -763,7 +886,6 @@ function! GrepToBuffer(pattern)
    silent nmap <C-G> <C-O>:bd!<Enter>
 endfunction
 "command -nargs=+ Grep :call GrepToBuffer(<q-args>)
-"----------------------Not used-----------------------------------
+"-----------------------------Not used-------------------------------
 
 "--------------------------------EOF---------------------------------
-"

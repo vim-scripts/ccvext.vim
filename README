@@ -8,6 +8,9 @@ ctags and cscope plugin, more convenice way to use ctags and cscope in vim
 Command:
 \sy   Generate tags and cscope database from current directory
 \sc   Configure window (Take care of the help info the window below)
+
+:VTStart  Start virtual tags (a better way to use ctgas)
+:VTStop  Stop virtual tags
                   
 Requirement:
 Unix:   ctags and cscope
