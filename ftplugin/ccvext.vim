@@ -1,10 +1,9 @@
-" Name:     ccvext.vim
+" Name:     ccvext.vim (ctags and cscope vim extends script)
 " Brief:    Usefull tools reading code or coding
-" Version:  2.0.0
+" Version:  3.0.2
 " Date:     Sun Jan 24 02:50:48 2010
-" Author:   Chen Zuopeng (EN: Daniel Chen)
-" Email:    rlxtime.com@gmail.com 
-"           chenzuopeng@gmail.com
+" Author:   Chen Zuopeng
+" Email:    chenzuopeng@gmail.com
 "
 " License:  Public domain, no restrictions whatsoever
 "
@@ -17,20 +16,46 @@
 "           event will the copyright holder be liable for any damages
 "           resulting from the use of this software.
 "
-" TODO:     Auto generate ctags and cscope database, and easy to use
+" TODO:     Auto generate ctags and cscope database, and easy to use.
 "
-" NOTE:     
+" Usage:    This file should reside in the plugin directory and be
+"           automatically sourced.
 "
+"           1. You can use "<Leader>sy" auto synchronize files from current directory recursively.
+"           2. You can use "<Leader>sc" open config window.
+"           3. You can use ":VTStart" command to start virual tags mode. Virtual tags mode over 
+"              load hot key "<C_]>" and "<ESC>", a quite way snippet source.
+"           4. You can use ":VTStop" command quite virutal tags mode
+"                
+" UPDATE:
+"          2.0.0
+"            Rewrite script the previous version is JumpInCode.vim
+"          3.0.0
+"            Fix bugs:
+"              - Open and close config (<Leader>sc) window vim not focuses the old window 
+"                when multi windows are opened.
+"              - Fix a bug about the tips.
+"
+"            Add new feature
+"              - Virtual tags is supported, a better way to use ctags. "<C_]>" and "<ESC>" is
+"                over loaded.
+"          3.0.1
+"            Fix bugs:
+"              - correct the cursor position when jump global value in snippet
+"                window
+"          3.0.2
+"            Update comments
+"
+" HELP:    Who can tell me how to write a help doc?
+"        
 
 "Initialization {{{
-"if exists("g:ccvext_version")
-"    finish
-"else
-"    "set autowrite
-"    "set autoread
-"endif
-
-let g:ccvext_version = "2.0"
+if exists("g:ccvext_version")
+    finish
+else
+    "set autowrite
+    "set autoread
+endif
 
 " Check for Vim version 600 or greater
 if v:version < 600
@@ -39,6 +64,7 @@ if v:version < 600
 endif
 "}}}
 
+let g:ccvext_version = "2.10"
 
 "Initialization local variable platform independence {{{
 
@@ -47,22 +73,15 @@ let s:ccve_debug = 'false'
 
 let s:ccve_vars = {
             \'win32':{
-                \'slash':'\', 
-                \'HOME':'\.symbs', 
-                \'list_f':'\.symbs\.list', 
-                \'env_f':'\.symbs\.env'
+                \'slash':'\', 'HOME':'\.symbs', 'list_f':'\.symbs\.list', 'env_f':'\.symbs\.env'
                 \},
             \'unix':{
-                \'slash':'/', 
-                \'HOME':$HOME . '/.symbs', 
-                \'list_f':$HOME . 
-                \'/.symbs/.l', 
-                \'env_f':$HOME . '/.symbs/.evn'
+                \'slash':'/', 'HOME':$HOME . '/.symbs', 'list_f':$HOME . '/.symbs/.l', 'env_f':$HOME . '/.symbs/.evn'
                 \},
             \'setting':{
-                \'tags_l':['./tags'],
-                \'cscope.out_l':[{'idx':0}, {0:'noused'}]
-                \}
+                \'tags_l':['./tags'], 'cscope.out_l':[{'idx':0}, {0:'noused'}]
+                \},
+            \'tmp_variable':0
             \}
 
 let s:ccc_v = {
@@ -80,15 +99,12 @@ else
     let s:os = 'unix'
 endif
 
-"let s:postfix = ['"*.java"']
-"let s:postfix = ['"*.py"']
-"let s:postfix = ['"*.html"', '"*.xml"']
-"let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
-let s:postfix = ['"*.java"', '"*.py"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
+"support java, c and c++
+let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
 
-"Exame software environment {{{
+"Check software environment {{{
 if !executable ('ctags')
-    echomsg 'Taglist: Exuberant ctags (http://ctags.sf.net) ' .
+    echomsg 'ccvext: Exuberant ctags (http://ctags.sf.net) ' .
             \ 'not found in PATH. Plugin is not full loaded.'
 endif
 
@@ -350,7 +366,7 @@ function! DelSymbs (symbs, rm)
         if s:ccve_debug == 'true'
             echo 'remove '. s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name  . 'line from .env'
         endif
-        let l:l = ReadConfig(s:ccve_vars[s:os]['env_f'])
+        let l:l = LoadConfigData(s:ccve_vars[s:os]['env_f'])
         let l:loopIdx = 0
         for l:idx in l:l
             let l:cmp_s = substitute(l:idx, '^.*' . s:ccve_vars[s:os]['slash'], '', 'g')
@@ -365,12 +381,12 @@ function! DelSymbs (symbs, rm)
             echo 'rm -rf ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name
         endif
         if has ('win32')
-            echo system('rd /S /q ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name)
+            echo system('rd /S /Q ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name)
         else
             echo system('rm -rf ' . s:ccve_vars[s:os]['HOME'] . s:ccve_vars[s:os]['slash'] . l:name)
         endif
         :close!
-        call EnvConfig (ReadConfig(s:ccve_vars[s:os]['env_f']))
+        call OpenConfigWnd (LoadConfigData(s:ccve_vars[s:os]['env_f']))
     endif
 endfunction
 "-----------------------------------------------------------------
@@ -479,6 +495,8 @@ function! MakeList (dir)
         if input ('System Prompt: Do you want to view file list?  Press [y] yes [any key to continue] no : ') == "y"
             "echo @a
             echo l:list
+        else
+            echo " "
         endif
     endif
     return l:list
@@ -533,7 +551,7 @@ endfunction
 
 "-----------------------------------------------------------------
 "Read records from record file and remove invalid data {{{
-function! ReadConfig (env_f)
+function! LoadConfigData (env_f)
     let l:l = []
     if !filereadable (a:env_f)
         return l:l
@@ -586,9 +604,19 @@ endfunction
 "}}}
 
 "-----------------------------------------------------------------
-"Show list window {{{
-function! EnvConfig (l)
+"Close config window
+function! CloseConfigWnd ()
+    :close!
+    if s:ccve_vars['tmp_variable'] != -1
+        exe s:ccve_vars['tmp_variable'] . 'wincmd w'
+        let s:ccve_vars['tmp_variable'] = -1
+    endif
+endfunction
+
+"Show config window {{{
+function! OpenConfigWnd (arg)
     let l:bname = "Help -- [a] Add to environment [d] Delete from environment [D] Delete from environment and remove conspond files"
+    let s:ccve_vars['tmp_variable'] = winnr ()
     let l:winnum =  bufwinnr (l:bname)
     "If the list window is open
     if l:winnum != -1
@@ -604,7 +632,7 @@ function! EnvConfig (l)
     setlocal modifiable
     " Open a new window at the bottom
     exe 'silent! botright ' . 8 . 'split ' . l:bname
-    0put = a:l
+    0put = a:arg
 
     " Mark the buffer as scratch
     setlocal buftype=nofile
@@ -620,7 +648,7 @@ function! EnvConfig (l)
     nnoremap <buffer><silent><CR> :call AddSymbs(getline('.')) <CR>
     nnoremap <buffer><silent>d :call DelSymbs(getline('.'), 'false') <CR>
     nnoremap <buffer><silent>D :call DelSymbs(getline('.'), 'true') <CR>
-    nnoremap <buffer><silent><ESC> :close!<CR>
+    nnoremap <buffer><silent><ESC> :call CloseConfigWnd() <CR>
 endfunction
 "}}}
 
@@ -667,11 +695,11 @@ function! DevLogOutput (msg, list)
 endfunction
 
 "-----------------------------------------------------------------
-function! TestFuncE ()
-    call EnvConfig (ReadConfig(s:ccve_vars[s:os]['env_f']))
+function! ConfigSymbs ()
+    call OpenConfigWnd (LoadConfigData(s:ccve_vars[s:os]['env_f']))
 endfunction
 
-function! TestFuncS ()
+function! SyncSymbs ()
     call SynchronizeSource ()
     call AddSymbs (getcwd ())
 endfunction
@@ -679,30 +707,30 @@ endfunction
 
 "-----------------------------------------------------------------
 if !exists(':CCS')
-	command! -nargs=0 CCS :call TestFuncS()
+	command! -nargs=0 CCS :call SyncSymbs()
 endif
 
 if !exists(':CCC')
-	command! -nargs=0 CCC :call TestFuncE()
+	command! -nargs=0 CCC :call ConfigSymbs()
 endif
 
-if !exists(':StartVTag')
-	command! -nargs=0 StartVT :call StartVirualTag ()
+if !exists(':VTStart')
+	command! -nargs=0 VTStart :call VTStartImpl ()
 endif
 
-if !exists(':StopVtag')
-	command! -nargs=0 StopVT :call StopVirualTag ()
+if !exists(':VTStop')
+	command! -nargs=0 VTStop :call VTStopImpl ()
 endif
 
 "{{{Hotkey setup
-:map <Leader>sy :call TestFuncS() <CR>
-:map <Leader>sc :call TestFuncE() <CR>
+:map <Leader>sy :call SyncSymbs() <CR>
+:map <Leader>sc :call ConfigSymbs() <CR>
 "}}}
 
 ":au BufReadPre *.h echo 'run here'
 
 "--------------------------Not used-----------------------------------
-function! StartVirualTag ()
+function! VTStartImpl ()
     "ctags is necessary
     if !executable ('ctags')
         echomsg 'ctags error(ctags is necessary): ' . 
@@ -716,22 +744,22 @@ function! StartVirualTag ()
     "endif
 endfunction
 
-function! StopVirualTag ()
+function! VTStopImpl ()
     "if !has ('win32')
     "    set mouse=
     "endif
 
-    :unmap <M-]>
+    :unmap <C-]>
 
-    exec 'silent' . bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd')) . ' wincmd w'
-    if winnr () == bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd'))
-        close!
-    endif
+    "exec 'silent' . bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd')) . ' wincmd w'
+    "if winnr () == bufwinnr(getwinvar(bufwinnr(s:deamon_wnd), 'snippet_wnd'))
+    "    close!
+    "endif
 
-    exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
-    if winnr () == bufwinnr(s:deamon_wnd)
-        close!
-    endif
+    "exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
+    "if winnr () == bufwinnr(s:deamon_wnd)
+    "    close!
+    "endif
 endfunction
 
 "-----------------------------------------------------------------
@@ -764,6 +792,7 @@ function! AutoTraceTags (tag_s)
     exec 'silent!' . bufwinnr (s:deamon_wnd) . ' wincmd w'
 
     let s:tags_l = taglist (a:tag_s)
+    "echo s:tags_l
 
     let l:put_l  = []
     for l:idx in s:tags_l
@@ -838,10 +867,14 @@ function! SourceSnippet()
     for l:idx in s:tags_l
         if l:idx['filename'] == l:new_line
             let l:cmd_s = matchstr(l:idx['cmd'], '\^.*\$')
+            if l:cmd_s == ''
+                let l:cmd_s = matchstr(l:idx['name'], '.*')
+            endif
         endif
     endfor
     let l:cmd_s = escape(escape(l:cmd_s, '*'), '"')
 
+    "echo l:cmd_s
     call search (l:cmd_s)
 endfunction
 
@@ -886,6 +919,5 @@ function! GrepToBuffer(pattern)
    silent nmap <C-G> <C-O>:bd!<Enter>
 endfunction
 "command -nargs=+ Grep :call GrepToBuffer(<q-args>)
-"-----------------------------Not used-------------------------------
 
 "--------------------------------EOF---------------------------------
