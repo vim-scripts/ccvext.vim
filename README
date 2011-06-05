@@ -2,29 +2,42 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=2943
 
 This is a new version from JumpInCode.vim I don't know why i can't upload a new version to the old JumpInCode page (http://www.vim.org/scripts/script.php?script_id=2770)? So I start this branch
 
-\"EN\"
-ctags and cscope plugin, more convenice way to use ctags and cscope in vim
+ctags and cscope plugin for vim, more convenice way to use ctags and cscope in vim
 
 Command:
 \sy   Generate tags and cscope database from current directory
 \sc   Configure window (Take care of the help info the window below)
 
-:VTStart  Start virtual tags (a better way to use ctgas)
-:VTStop  Stop virtual tags
-                  
+Sample_1:
+    :e your_source_.h
+    :cd %:p:h
+    \sy
+    <Enter>
+    :EnQuickSnippet
+    :CscopeCtagsMenu
+
+Sample_2:
+    :cd d:\
+    \sc
+    <Select your database and input enter>
+    :EnQuickSnippet
+    :CscopeCtagsMenu
+
+
+Suggestion:
+    1. <Leader>sy is default script command, if it conflict with your other script you can change it at line 753 of script.
+    2. <Leader>sy is default script command, if it conflict with your other script you can change it at line 754 of script.
+    3. Command CscopeCtagsMenu, EnQuickSnippet, DiQuickSnippet are not mapped, for convenient way is map it to your own command in your .vimrc or _vimrc file.
+    4. Is your are using gvim on window, CscopeCtagsMenu is pretty help to view source code.
+
+Update (4.0.0)
+    1. Fix some bug in the old script, and add some new function in gvim.
+    2. Add command EnQuickSnippet and DiquickSnippet. This is a better way to use ctags, Now vim is working pretty like sourceinside, specially on windows givm.
+
+Tips:
+    1. CscopeCtagsMenu command maybe not wok on linux or cygwin terminal, this is for windows gvim.
+    2. Friends help docs is not finished yet. If you have any problem with script or any suggestion, please click here http://groups.google.com/group/ccvext?msg=new&lnk=gcis or email me thatway.c@gmail.com
+
 Requirement:
-Unix:   ctags and cscope
-Win32: ctags.exe and cscope.exe  (win32 ctags and cscope could download from:http://code.google.com/p/easy-vim/downloads/list)
-
-\"中文  ZH\"
-自动生成并使用ctags和cscope
-
-命令：
-\sy   从当前目录生成tags和cscope.out
-\sc   配置窗口 (注意配置窗口底部的帮助信息)
-
-系统要求：
-预安装要求ctags和cscope:
-Unix:    ctags and cscope
-Win32: ctags and cscope  （win32版的ctags和cscope下载地址：http://code.google.com/p/easy-vim/downloads/list&#65289;
+    ctags and cscope. And windows user can download them http://code.google.com/p/easy-vim/downloads/list
 
