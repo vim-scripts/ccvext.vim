@@ -877,7 +877,16 @@ function! TagTrace (tag_s)
 
     "push tags data to list
     if empty (s:tags_l)
-        call add (l:put_l, 'No symbs found in tags: ' . &tags)
+        "call add (l:put_l, 'No symbs found in tags: ' . &tags)
+		let l:tag_list_file = tagfiles ()
+		if empty (l:tag_list_file)
+			call add (l:put_l, 'Tags is not set, please call :SyncSource or :SymbsConfig first')
+		else
+			call add (l:put_l, 'No symbs found in tags:')
+			for l:single in l:tag_list_file
+				call add (l:put_l, l:single)
+			endfor
+		endif
     else
         for l:idx in s:tags_l
             call add (l:put_l, l:idx['filename'])
@@ -1112,6 +1121,10 @@ amenu Plugin.CCVimExt.FindThisDef         :cs find g <C-R>=expand("<cword>")<CR>
 amenu Plugin.CCVimExt.FindFileIncThisFile :cs find i <C-R>=expand("<cword>")<CR><CR>
 amenu Plugin.CCVimExt.FindSymbs           :cs find s <C-R>=expand("<cword>")<CR><CR>
 amenu Plugin.CCVimExt.FindAssignmentsTo   :cs find t <C-R>=expand("<cword>")<CR><CR>
+
+menu  Plugin.CCVimExt.-Sep3-	          :
+amenu Plugin.CCVimExt.Prev                :<CTRL-O> <CR><CR>
+amenu Plugin.CCVimExt.Prev                :<CTRL-T> <CR><CR>
 
 menu  Plugin.CCVimExt.-Sep2-	          :
 function! CloseWindow ()
