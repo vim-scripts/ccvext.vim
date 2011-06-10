@@ -1,7 +1,7 @@
 " Name:     ccvext.vim (ctags and cscope vim extends script)
 " Brief:    Usefull tools reading code or coding
-" Version:  4.0.0
-" Date:     Sun Jan 24 02:50:48 2010
+" Version:  4.2.0
+" Date:     2011/06/10 12:55:57
 " Author:   Chen Zuopeng (EN: Daniel Chen)
 " Email:    chenzuopeng@gmail.com
 "
@@ -28,28 +28,35 @@
 "             Command: "EnQuickSnippet" - Start source snippet (a better way to use ctags)
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
-" UPDATE:   4.0.0 {{{
-"             Descript :
+" UPDATE:   4.2.0 {{{
+"			  Descript:
+"			    - Don't search from tags when the text's lenght is equal to 1
+"			    - Don't search from tags when the text data is c/c++ key word.
+"             BugFix:
+"               - Fix the problem about double click in the main source window.
+"           4.1.0
+"			  Descript:
+"			    - Modify tip window's info when tags searched not found.
+"           4.0.0
+"             Descript:
 "               - Rename commands name
 "               - Auto update source snippet window
 "           3.0.1
-"             Fix bugs :
+"             Fix Bugs:
 "               - correct the cursor position when jump global value in snippet window 
 "           3.0.0
-"             New Feature :
+"             New Feature:
 "               - Virtual tag is support, a better way to use ctags. CTRL_] is
 "                 over writen.
 "
-"             Fix bugs :
+"             Fix Bugs:
 "               - Open and close config (<Leader>sc) window vim not focuses the old window 
 "                 when multi windows are opened.
 "               - Fix a bug about the tips.
 "           2.0.0 
 "             Rewrite script the previous is JumpInCode.vim
 "           }}}
-"---------------------------------------------------------------------------------------------
-"-------------------------------------------CCVEXT--------------------------------------------
-"---------------------------------------------------------------------------------------------
+"-------------------------------------------CCVEXT-----------------------------------------
 "Development setting {{{
 let s:debug_flg = 'false'
 
@@ -61,21 +68,18 @@ else
     "null
 endif
 "}}}
-
 " Check for Vim version 600 or greater {{{
-let g:ccvext_version = "4.0.0"
+let g:ccvext_version = "4.2.0"
 
-if v:version < 600
-    echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 6.0 and greater."
+if v:version < 700
+    echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
     finish
 endif
 "}}}
-
 "Global value declears {{{
 let s:functions = {'_command':{}}
 "let s:symbs_dir_name = '.symbs'
 "}}}
-
 "Initialization local variable platform independence {{{
 let s:platform_inde = {
             \'win32':{
@@ -90,7 +94,6 @@ let s:platform_inde = {
             \'tmp_variable':0
             \}
 "}}}
-
 "Platform check {{{
 if has ('win32')
     let s:platform = 'win32'
@@ -98,11 +101,9 @@ else
     let s:platform = 'unix'
 endif
 "}}}
-
 "support postfix list {{{
 let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
 "}}}
-
 "Check software environment {{{
 if !executable ('ctags')
     echomsg 'Taglist: Exuberant ctags (http://ctags.sf.net) ' .
@@ -118,7 +119,6 @@ if !executable ('ctags') && !executable ('cscope')
     finish
 endif
 "}}}
-
 "Add symbs to environment {{{
 function! AddSymbs (symbs)
     if a:symbs == ""
@@ -255,7 +255,6 @@ function! AddSymbs (symbs)
     endif
 endfunction
 "}}}
-
 "Delete symbs from environment {{{
 function! DelSymbs (symbs, rm)
     if a:symbs == ""
@@ -390,7 +389,6 @@ function! DelSymbs (symbs, rm)
     endif
 endfunction
 "}}}
-
 "Delete cscope symbs {{{
 function! DelCscopeSymbs (symbs)
     let l:name  = substitute(a:symbs, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
@@ -434,7 +432,6 @@ function! DelCscopeSymbs (symbs)
     call DevLogOutput ("s:platform_inde['setting']['cscope.out_l']", s:platform_inde['setting']['cscope.out_l'])
 endfunction
 "}}}
-
 "Generate tags files {{{
 function! ExecCtags (list)
     if (!executable ('ctags'))
@@ -458,7 +455,6 @@ function! ExecCtags (list)
     return 'true'
 endfunction
 "}}}
-
 "Generate cscope files {{{
 function! ExecCscope (list)
     if (!executable ('cscope'))
@@ -485,7 +481,6 @@ function! ExecCscope (list)
     return 'true'
 endfunction
 "}}}
-
 "Generate file list {{{
 function! MakeList (dir)
     if 'true' == MakeDirP (s:platform_inde[s:platform]['HOME'])
@@ -504,7 +499,6 @@ function! MakeList (dir)
     return l:list
 endfunction
 "}}}
-
 "Generate shell command {{{
 function! s:functions._command['win32'] (dir) dict
     let l:cmd = 'dir'
@@ -527,7 +521,6 @@ function! s:functions._command['unix'] (dir) dict
     return l:cmd
 endfunction
 "}}}
-
 "Create directory {{{
 function! MakeDirP (path)
     if !isdirectory (a:path)
@@ -548,7 +541,6 @@ function! MakeDirP (path)
     return 'true'
 endfunction
 "}}}
-
 "Read records from record file and remove invalid data {{{
 function! LoadConfigData (env_f)
     let l:l = []
@@ -577,7 +569,6 @@ function! LoadConfigData (env_f)
     return l:l
 endfunction
 "}}}
-
 "Write a new record to file {{{
 function! WriteConfig (env_f, newline)
     if a:env_f == '' 
@@ -600,7 +591,6 @@ function! WriteConfig (env_f, newline)
     return 'true'
 endfunction
 "}}}
-
 "Close config window {{{
 function! CloseConfigWnd ()
     :close!
@@ -610,7 +600,6 @@ function! CloseConfigWnd ()
     endif
 endfunction
 "}}}
-
 "Show config window {{{
 function! OpenConfigWnd (arg)
     let l:bname = "Help -- [a] Add to environment [d] Delete from environment [D] Delete from environment and remove conspond files"
@@ -651,7 +640,6 @@ function! OpenConfigWnd (arg)
     "nnoremap <buffer><silent><ESC> :call CloseConfigWnd() <CR>
 endfunction
 "}}}
-
 "Synchronize source {{{
 function! SynchronizeSource (cur_dir)
     "let l:l = MakeList (getcwd ())
@@ -682,7 +670,6 @@ function! SynchronizeSource (cur_dir)
     endif
 endfunction
 "}}}
-
 " Log the supplied debug message along with the time {{{
 function! DevLogOutput (msg, list)
     if s:debug_flg == 'true'
@@ -695,7 +682,6 @@ function! DevLogOutput (msg, list)
     endif
 endfunction
 "}}}
-
 "Config Symbs {{{
 function! ConfigSymbs ()
 	call CloseSnippedWndAndListWndOnce ()
@@ -738,7 +724,6 @@ function! SyncSource ()
 	endif
 endfunction
 "}}}
-
 "Commands {{{
 if !exists(':SyncSource')
 	command! -nargs=0 SyncSource :call SyncSource()
@@ -748,18 +733,14 @@ if !exists(':SymbsConfig')
 	command! -nargs=0 SymbsConfig :call ConfigSymbs()
 endif
 "}}}
-
 "Hotkey setting {{{
 :map <Leader>sy :call SyncSource()   <CR>
 :map <Leader>sc :call ConfigSymbs()  <CR>
 "}}}
-"---------------------------------------------------------------------------------------------
 "---------------------------------------CCVEXT EXTEND-----------------------------------------
-"---------------------------------------------------------------------------------------------
 " default colors/groups {{{
 hi default_hi_color ctermbg=Cyan ctermfg=Black guibg=#8CCBEA guifg=Black
 "}}}
-"
 "Enable quick source snippet{{{
 function! EnQuickSnippet ()
     "ctags is necessary
@@ -772,16 +753,17 @@ function! EnQuickSnippet ()
 
     call MarkWindow ('main_source_window_mark')
     
-    :let s:update_time = 600
+    :let s:update_time = 800
     :exe "set updatetime=" . string(s:update_time)
     
     :au! CursorHold * nested call AutoTagTrace ()
+	:au! WinEnter * call AutoRemoveBufferMap ()
 endfunction
 "}}}
-"
 "Disable quick source snippet {{{
 function! DiQuickSnippet ()
     :au! CursorHold
+	:au! WinEnter
     ":call GoToMaredWindow (1, 'main_source_window_mark')
     "exec 'silent! wincmd o'
     "close source snippet list window
@@ -801,7 +783,6 @@ function! DiQuickSnippet ()
     call UnmarkWindow ()
 endfunction
 "}}}
-"
 "Cscope and ctags popup menu {{{
 function! CscopeCtagsMenu ()
 	call OtherPluginDetect ()
@@ -814,7 +795,6 @@ function! CscopeCtagsMenu ()
 	endif
 endfunction
 "}}}
-"
 "Temp close snipped window and list window {{{
 function! CloseSnippedWndAndListWndOnce ()
     if FindMarkedWindow (1, 'source_snippet_list_wnd') != 0
@@ -832,7 +812,6 @@ function! CloseSnippedWndAndListWndOnce ()
     call GoToMaredWindow (1, 'main_source_window_mark')
 endfunction
 "}}}
-"
 "Trace tags {{{
 function! TagTrace (tag_s)
     "ctags is necessary
@@ -840,7 +819,17 @@ function! TagTrace (tag_s)
         return 'false'
     endif
 
-    if a:tag_s == ''
+    if a:tag_s == '' || a:tag_s == ':' || a:tag_s == ';'
+				\|| a:tag_s == 'int'
+				\|| a:tag_s == 'float'
+				\|| a:tag_s == 'double'
+				\|| a:tag_s == 'unsigned'
+				\|| a:tag_s == 'return'
+				\|| a:tag_s == 'if'
+				\|| a:tag_s == 'else'
+				\|| a:tag_s == 'case'
+				\|| a:tag_s == 'break'
+				\|| strlen (a:tag_s) == 1
         return 'false'
     endif
     "save current tag for hight light
@@ -880,9 +869,10 @@ function! TagTrace (tag_s)
         "call add (l:put_l, 'No symbs found in tags: ' . &tags)
 		let l:tag_list_file = tagfiles ()
 		if empty (l:tag_list_file)
+			call add (l:put_l, "Check time: " . strftime("%H:%M:%S"))
 			call add (l:put_l, 'Tags is not set, please call :SyncSource or :SymbsConfig first')
 		else
-			call add (l:put_l, 'No symbs found in tags:')
+			call add (l:put_l, "Check time: " . strftime("%H:%M:%S") . " No symbs found in tags:")
 			for l:single in l:tag_list_file
 				call add (l:put_l, l:single)
 			endfor
@@ -924,9 +914,13 @@ function! TagTrace (tag_s)
     return 'true'
 endfunction
 "}}}
-
 "Auto trace tags {{{
 function! AutoTagTrace ()
+	if FindMarkedWindow (1, 'main_source_window_mark') == 0
+		call DiQuickSnippet ()
+		echo "Auto close quick snippet window, bacause the main source window is closed."
+		return
+	endif
     "forcus on other window
     if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
         call TagTrace (expand('<cfile>'))
@@ -941,7 +935,26 @@ function! AutoTagTrace ()
     endif
 endfunction
 "}}}
-
+"Remove source snippet window's property {{{
+function! AutoRemoveBufferMap ()
+	if winnr () == FindMarkedWindow (1, "main_source_window_mark")
+		for l:filetype in s:postfix 
+			if matchstr (l:filetype, &ft) != -1
+				nmapclear <buffer>
+			endif
+		endfor
+	endif
+	if winnr () == FindMarkedWindow (1, "source_snippet_wnd")
+		call SetSnippetWndMap ()
+	endif
+endfunction
+"}}}
+"Set snippet window buffer map {{{
+function! SetSnippetWndMap ()
+    nnoremap <buffer><Enter> :call <SID>MagicFunc () <CR><CR>
+    nnoremap <buffer><2-LeftMouse> :call <SID>MagicFunc() <CR><CR>
+endfunction
+"}}}
 "Source Snippet {{{
 function! SourceSnippet()
     "jump to s:src_snippet_list_wnd window
@@ -975,16 +988,15 @@ function! SourceSnippet()
     endif
 
     if winnr () == FindMarkedWindow (1, 'source_snippet_wnd')
-		setlocal buftype=nofile
-		setlocal bufhidden=delete
-		setlocal noswapfile
-		setlocal nowrap
-		setlocal nobuflisted
-		setlocal nomodifiable
+		"setlocal buftype=nofile
+		"setlocal bufhidden=delete
+		"setlocal noswapfile
+		"setlocal nowrap
+		"setlocal nobuflisted
+		"setlocal nomodifiable
     endif
 
-    nnoremap <buffer><silent><Enter> :call <SID>MagicFunc () <CR>
-    nnoremap <buffer><2-LeftMouse> :call <SID>MagicFunc() <CR>
+	call SetSnippetWndMap ()
     set number
 
     let l:cmd_s = 'v_null'
@@ -1011,9 +1023,12 @@ function! SourceSnippet()
     exec 'silent! ' . bufwinnr(s:src_snippet_list_wnd) . 'wincmd w'
 endfunction
 "}}}
-
 "Magic Function {{{
 fu! <SID>MagicFunc ()
+    if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
+        return
+    endif
+
     let l:bufnr = bufnr ('%')
 	let l:current_line_nu = line ('.')
     call GoToMaredWindow (1, 'main_source_window_mark')
@@ -1022,7 +1037,6 @@ fu! <SID>MagicFunc ()
     "nmapclear <buffer>
 endf
 "}}}
-
 "Command setting {{{
 if !exists(':EnQuickSnippet')
 	command! -nargs=0 EnQuickSnippet :call EnQuickSnippet ()
@@ -1032,7 +1046,6 @@ if !exists(':DiQuickSnippet')
 endif
 
 "}}}
-
 "External Function: GoToLine {{{
 function! GoToLine(mainbuffer)
    let linenumber = expand("<cword>")
@@ -1043,7 +1056,6 @@ function! GoToLine(mainbuffer)
 endfunction
 "command -nargs=1 GoToLine :call GoToLine(<f-args>)
 "}}}
-
 "External Function: GrepToBuffer {{{
 function! GrepToBuffer(pattern)
    let mainbuffer = bufnr("%")
@@ -1061,19 +1073,16 @@ endfunction
 
 "command -nargs=+ Grep :call GrepToBuffer(<q-args>)
 "}}}
-
 "Mark window {{{
 function! MarkWindow (mark_desc)
     let w:wnd_mark = a:mark_desc
 endfunction
 "}}}
-
 "Unmark window {{{
 function! UnmarkWindow ()
     let w:wnd_mark = ''
 endfunction
 "}}}
-
 "Find marked window {{{
 function! FindMarkedWindow (page_idx, mark_desc)
     let l:win_count = tabpagewinnr (a:page_idx, '$')
@@ -1086,7 +1095,6 @@ function! FindMarkedWindow (page_idx, mark_desc)
     return 0
 endfunction
 "}}}
-
 "Go go marked window {{{
 function! GoToMaredWindow (page_idx, mark_desc)
     let l:marked_wnd_num = FindMarkedWindow (a:page_idx, a:mark_desc)
@@ -1098,17 +1106,9 @@ function! GoToMaredWindow (page_idx, mark_desc)
 	return 'true'
 endfunction
 "}}}
-
-"Host key setting {{{
-":map <Leader>se :call EnQuickSnippet () <CR>
-":map <Leader>sd :call DiQuickSnippet () <CR>
-"}}}
-
 "Default Menu setting {{{
-amenu Plugin.CCVimExt.CreateDatabase      :call SyncSource  () <CR>
-amenu Plugin.CCVimExt.SelectDatabase      :call ConfigSymbs () <CR>
-
-menu  Plugin.CCVimExt.-Sep0-	          :
+amenu Plugin.CCVimExt.SynchronizeSource   :call SyncSource  () <CR>
+amenu Plugin.CCVimExt.OpenProject         :call ConfigSymbs () <CR>
 amenu Plugin.CCVimExt.EnableQuickSnippet  :call EnQuickSnippet () <CR>
 amenu Plugin.CCVimExt.DisableQuickSnippet :call DiQuickSnippet () <CR>
 
@@ -1122,10 +1122,6 @@ amenu Plugin.CCVimExt.FindFileIncThisFile :cs find i <C-R>=expand("<cword>")<CR>
 amenu Plugin.CCVimExt.FindSymbs           :cs find s <C-R>=expand("<cword>")<CR><CR>
 amenu Plugin.CCVimExt.FindAssignmentsTo   :cs find t <C-R>=expand("<cword>")<CR><CR>
 
-menu  Plugin.CCVimExt.-Sep3-	          :
-amenu Plugin.CCVimExt.Prev                :<CTRL-O> <CR><CR>
-amenu Plugin.CCVimExt.Prev                :<CTRL-T> <CR><CR>
-
 menu  Plugin.CCVimExt.-Sep2-	          :
 function! CloseWindow ()
     if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
@@ -1138,7 +1134,6 @@ function! CloseWindow ()
 endfunction
 amenu Plugin.CCVimExt.CloseThisWindow     :call CloseWindow () <CR>
 "}}}
-"
 "Other plugin detect {{{
 function! CallPluginTagList ()
 	try | exec ":TlistToggle" | catch /.*/ | echo "Taglist is not installed, get it from http://www.vim.org/scripts/script.php?script_id=273" | endtry
@@ -1149,8 +1144,12 @@ function! CallPluginMRU ()
 	try | exec ":MRU" | catch /.*/ | echo "MRU is not installed, get it from http://www.vim.org/scripts/script.php?script_id=521" | endtry
 endfunction
 
-function! CallPluginMark ()
-	try | exec ":Mark " . expand("<cword>") | catch /.*/ | echo "Mark is not installed, get it from http://www.vim.org/scripts/script.php?script_id=1238" | endtry
+function! CallPluginMark (op)
+	if a:op == "mark"
+		try | exec ":Mark " . expand("<cword>") | catch /.*/ | echo "Mark is not installed, get it from http://www.vim.org/scripts/script.php?script_id=1238" | endtry
+	else
+		try | exec ":MarkClear" | catch /.*/ | echo "Mark is not installed, get it from http://www.vim.org/scripts/script.php?script_id=1238" | endtry
+	endif
 endfunction
 
 function! CallPluginNERDTree ()
@@ -1159,32 +1158,36 @@ endfunction
 
 function! OtherPluginDetect ()
 	if exists (":TlistToggle") || exists (":MRU") || exists (":Mark") || exists (":NERDTree")
-		menu  Plugin.CCVimExt.-Sep100- :
+		menu  Plugin.CCVimExt.-Sep100-  :
 	endif
 	if exists (":NERDTree")
-		amenu Plugin.CCVimExt.NERDTree :call CallPluginNERDTree () <CR>
+		amenu Plugin.CCVimExt.NERDTree  :call CallPluginNERDTree () <CR>
 	endif
 	if exists (":TlistToggle")
-		amenu Plugin.CCVimExt.TList    :call CallPluginTagList () <CR>
+		amenu Plugin.CCVimExt.TList     :call CallPluginTagList () <CR>
 	endif
 	if exists (":Mark")
-		amenu Plugin.CCVimExt.Mark     :call CallPluginMark () <CR>
+		amenu Plugin.CCVimExt.MarkWord  :call CallPluginMark ("mark") <CR>
+	endif
+	if exists (":Mark")
+		amenu Plugin.CCVimExt.MarkClear :call CallPluginMark ("markclear") <CR>
 	endif
 	if exists (":MRU")
-		amenu Plugin.CCVimExt.MRU      :call CallPluginMRU () <CR>
+		amenu Plugin.CCVimExt.MRU       :call CallPluginMRU () <CR>
 	endif
 endfunction
 "}}}
-"
 "Commands {{{
 if !exists(':CscopeCtagsMenu')
 	command! -nargs=0 CscopeCtagsMenu :call CscopeCtagsMenu ()
 endif
 "}}}
-"
+"Host key setting {{{
+":map <Leader>se :call EnQuickSnippet () <CR>
+":map <Leader>sd :call DiQuickSnippet () <CR>
+"}}}
 "Test Test Test Test {{{
 "
 "
 "
-"
-" vim:ts=4 fdm=marker
+" vim600:fdm=marker:fdc=4:cms=\ "\ %s:
