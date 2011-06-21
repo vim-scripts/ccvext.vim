@@ -1,6 +1,6 @@
 " Name:     ccvext.vim (ctags and cscope vim extends script)
 " Brief:    Usefull tools reading code or coding
-" Version:  4.2.0
+" Version:  4.3.0
 " Date:     2011/06/10 12:55:57
 " Author:   Chen Zuopeng (EN: Daniel Chen)
 " Email:    chenzuopeng@gmail.com
@@ -28,7 +28,10 @@
 "             Command: "EnQuickSnippet" - Start source snippet (a better way to use ctags)
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
-" UPDATE:   4.2.0 {{{
+" UPDATE:   4.3.0 {{{
+"             Descript:
+"               - When tags file and cscope file not exist, auto remove it from config list.
+"           4.2.0
 "			  Descript:
 "			    - Don't search from tags when the text's lenght is equal to 1
 "			    - Don't search from tags when the text data is c/c++ key word.
@@ -61,15 +64,15 @@
 let s:debug_flg = 'false'
 
 if s:debug_flg == 'false'
-    "if exists("g:ccvext_version")
-    "    finish
-    "endif
+    if exists("g:ccvext_version")
+        finish
+    endif
 else
     "null
 endif
 "}}}
-" Check for Vim version 600 or greater {{{
-let g:ccvext_version = "4.2.0"
+" Check for Vim version 700 or greater {{{
+let g:ccvext_version = "4.3.0"
 
 if v:version < 700
     echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
@@ -549,24 +552,27 @@ function! LoadConfigData (env_f)
     endif
 
     let l:l = readfile (a:env_f)
+	let l:returned = []
     if filereadable (a:env_f)
         if !empty (l:l)
             for i in l:l
                 "Current directory name
-                let l:name = substitute(i, '^.*/', '', 'g')  
-                if !filereadable (s:platform_inde[s:platform]['HOME'] . '/' . l:name . '/tags') 
-                            \&& !filereadable (s:platform_inde[s:platform]['HOME'] . '/' . l:name . '/cscope.out')
+				let l:name  = substitute(i, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
+                if !filereadable (s:platform_inde[s:platform]['HOME'] . '/' . l:name . '/tags') && !filereadable (s:platform_inde[s:platform]['HOME'] . '/' . l:name . '/cscope.out')
                     "Remove record from record_list
-                    call filter (l:l, 'v:val !~ ' . "'" . i . "'")
+					"echo s:platform_inde[s:platform]['HOME'] . '/' . l:name . '/tags'. " file not exist."
+                    "call filter (l:l, 'v:val !~ ' . '"' . i . '"')
+				else
+					call add (l:returned, i)
                 endif
             endfor
         endif
         "Write record back
-        call writefile (l:l, a:env_f)
+        call writefile (l:returned , a:env_f)
     else
         echomsg 'Not found any database record.'
     endif
-    return l:l
+    return l:returned
 endfunction
 "}}}
 "Write a new record to file {{{
