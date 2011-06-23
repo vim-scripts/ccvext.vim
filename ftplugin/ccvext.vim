@@ -1,6 +1,6 @@
 " Name:     ccvext.vim (ctags and cscope vim extends script)
 " Brief:    Usefull tools reading code or coding
-" Version:  4.3.0
+" Version:  4.4.0
 " Date:     2011/06/10 12:55:57
 " Author:   Chen Zuopeng (EN: Daniel Chen)
 " Email:    chenzuopeng@gmail.com
@@ -28,7 +28,13 @@
 "             Command: "EnQuickSnippet" - Start source snippet (a better way to use ctags)
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
-" UPDATE:   4.3.0 {{{
+" UPDATE:   4.4.0 {{{
+"             Descript:
+"               - Add C# source code supported. (Recently I am working with it)
+"               - Fix the problem: Sometimes double click the soruce snippet window will cause a dead loop.
+"             TUDO:
+"               - Cscope database list is not work perfect.
+"           4.3.0
 "             Descript:
 "               - When tags file and cscope file not exist, auto remove it from config list.
 "           4.2.0
@@ -64,15 +70,15 @@
 let s:debug_flg = 'false'
 
 if s:debug_flg == 'false'
-    if exists("g:ccvext_version")
-        finish
-    endif
+    "if exists("g:ccvext_version")
+    "    finish
+    "endif
 else
     "null
 endif
 "}}}
 " Check for Vim version 700 or greater {{{
-let g:ccvext_version = "4.3.0"
+let g:ccvext_version = "4.4.0"
 
 if v:version < 700
     echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
@@ -105,7 +111,7 @@ else
 endif
 "}}}
 "support postfix list {{{
-let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"']
+let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"', '*.cs']
 "}}}
 "Check software environment {{{
 if !executable ('ctags')
@@ -207,7 +213,6 @@ function! AddSymbs (symbs)
             "eg: 
             "   l:idx = '/home/user/.symbs/boost/cscope.out'
             "   l:cmp_s = boost
-
             "remove '/cscope.out'
             let l:cscope_d = s:platform_inde['setting']['cscope.out_l'][1]
             let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:platform_inde[s:platform]['slash'] . 'cscope.out', '', 'g')
@@ -414,6 +419,11 @@ function! DelCscopeSymbs (symbs)
             echo 'debug_flg: l:cmp_s:' . l:cmp_s
             echo 'debug_flg: l:name:' . l:name
         endif
+
+		echo s:platform_inde['setting']['cscope.out_l'][1]
+
+        echo 'debug_flg: l:cmp_s:' . l:cmp_s
+        echo 'debug_flg: l:name:' . l:name
 
         if l:cmp_s == l:name
             "cscope.out alread set, remove it
@@ -637,13 +647,13 @@ function! OpenConfigWnd (arg)
     setlocal nomodifiable
 
     " Create a mapping to control the files
-    nnoremap <buffer><silent><Enter> :call AddSymbs(getline('.')) <CR>
-    nnoremap <buffer><2-LeftMouse>   :call AddSymbs(getline('.')) <CR>
+    nmap <buffer><silent><Enter> :call AddSymbs(getline('.')) <CR>
+    nmap <buffer><2-LeftMouse>   :call AddSymbs(getline('.')) <CR>
 
-    nnoremap <buffer><silent>a :call AddSymbs(getline('.'))          <CR>
-    nnoremap <buffer><silent>d :call DelSymbs(getline('.'), 'false') <CR>
-    nnoremap <buffer><silent>D :call DelSymbs(getline('.'), 'true')  <CR>
-    "nnoremap <buffer><silent><ESC> :call CloseConfigWnd() <CR>
+    nmap <buffer><silent>a :call AddSymbs(getline('.'))          <CR>
+    nmap <buffer><silent>d :call DelSymbs(getline('.'), 'false') <CR>
+    nmap <buffer><silent>D :call DelSymbs(getline('.'), 'true')  <CR>
+    "nmap <buffer><silent><ESC> :call CloseConfigWnd() <CR>
 endfunction
 "}}}
 "Synchronize source {{{
@@ -715,9 +725,9 @@ function! SyncSource ()
 	endif
 
 	if has ("gui")
-		try   | exec "lcd " . l:base_directory 
+		try   | exec "lcd " . escape (escape (escape (escape (escape (escape (escape (escape (escape (l:base_directory, "#"), "!"), "&"), "%"), "$"), "@"), "~"), "("), ")")
 			\ | catch /.*/
-			\ | echo "The directory [" . l:base_directory . "] not exist, Opeator canceled"
+			\ | echo "The directory [" . l:base_directory . "] not exist, Operation canceled"
 			\ | return 
 			\ | endtry
 	endif
@@ -763,7 +773,7 @@ function! EnQuickSnippet ()
     :exe "set updatetime=" . string(s:update_time)
     
     :au! CursorHold * nested call AutoTagTrace ()
-	:au! WinEnter * call AutoRemoveBufferMap ()
+	":au! WinEnter * call AutoRemoveBufferMap ()
 endfunction
 "}}}
 "Disable quick source snippet {{{
@@ -907,8 +917,8 @@ function! TagTrace (tag_s)
     endif
 
     " Create a mapping to jump to the file
-    nnoremap <buffer><silent><CR>  :call SourceSnippet()<CR>
-    nnoremap <buffer><2-LeftMouse> :call SourceSnippet()<CR>
+    nmap <buffer><silent><CR>  :call SourceSnippet()<CR>
+    nmap <buffer><2-LeftMouse> :call SourceSnippet()<CR>
 
     if empty (s:tags_l)
         "do nothing
@@ -943,22 +953,23 @@ endfunction
 "}}}
 "Remove source snippet window's property {{{
 function! AutoRemoveBufferMap ()
-	if winnr () == FindMarkedWindow (1, "main_source_window_mark")
-		for l:filetype in s:postfix 
-			if matchstr (l:filetype, &ft) != -1
-				nmapclear <buffer>
-			endif
-		endfor
-	endif
-	if winnr () == FindMarkedWindow (1, "source_snippet_wnd")
-		call SetSnippetWndMap ()
-	endif
+	"if winnr () == FindMarkedWindow (1, "main_source_window_mark")
+	"	for l:filetype in s:postfix 
+	"		if matchstr (l:filetype, &ft) != -1
+	"			"nmapclear <buffer>
+	"			nmapclear <buffer>
+	"		endif
+	"	endfor
+	"endif
+	"if winnr () == FindMarkedWindow (1, "source_snippet_wnd")
+	"	call SetSnippetWndMap ()
+	"endif
 endfunction
 "}}}
 "Set snippet window buffer map {{{
 function! SetSnippetWndMap ()
-    nnoremap <buffer><Enter> :call <SID>MagicFunc () <CR><CR>
-    nnoremap <buffer><2-LeftMouse> :call <SID>MagicFunc() <CR><CR>
+    nmap <buffer><Enter> :call <SID>MagicFunc () <CR><CR>
+    nmap <buffer><2-LeftMouse> :call <SID>MagicFunc() <CR><CR>
 endfunction
 "}}}
 "Source Snippet {{{
@@ -1032,15 +1043,15 @@ endfunction
 "Magic Function {{{
 fu! <SID>MagicFunc ()
     if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
-        return
+		nmapclear <buffer>
+	else
+		let l:bufnr = bufnr ('%')
+		let l:current_line_nu = line ('.')
+		call GoToMaredWindow (1, 'main_source_window_mark')
+		exec 'b' . ' ' . l:bufnr
+		exec ':' . l:current_line_nu
+		"nmapclear <buffer>
     endif
-
-    let l:bufnr = bufnr ('%')
-	let l:current_line_nu = line ('.')
-    call GoToMaredWindow (1, 'main_source_window_mark')
-    exec 'b' . ' ' . l:bufnr
-	exec ':' . l:current_line_nu
-    "nmapclear <buffer>
 endf
 "}}}
 "Command setting {{{
@@ -1193,7 +1204,18 @@ endif
 ":map <Leader>sd :call DiQuickSnippet () <CR>
 "}}}
 "Test Test Test Test {{{
-"
-"
+function! Test ()
+	"let slot_id_str = matchstr (getline ("."), "^[ |0-9][0-9]")
+	"let slot_id = -1;
+	"if slot_id_str != ""
+	"	let slot_id = eval (slot_id_str)
+	"else
+	"	"do nothing
+	"endif
+	"echo slot_id
+	"let cscope_db_uri = matchstr (getline ("."), "[\\|\/][^ ]*")
+	"echo slot_id
+endfunction
 "
 " vim600:fdm=marker:fdc=4:cms=\ "\ %s:
+
