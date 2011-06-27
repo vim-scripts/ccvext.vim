@@ -1,6 +1,6 @@
 " Name:     ccvext.vim (ctags and cscope vim extends script)
 " Brief:    Usefull tools reading code or coding
-" Version:  4.4.0
+" Version:  4.5.0
 " Date:     2011/06/10 12:55:57
 " Author:   Chen Zuopeng (EN: Daniel Chen)
 " Email:    chenzuopeng@gmail.com
@@ -28,7 +28,10 @@
 "             Command: "EnQuickSnippet" - Start source snippet (a better way to use ctags)
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
-" UPDATE:   4.4.0 {{{
+" UPDATE:   4.5.0 {{{
+"             Descript:
+"               - Fix the problem when ccvext work with script bufexplorer.vim
+"           4.4.0
 "             Descript:
 "               - Add C# source code supported. (Recently I am working with it)
 "               - Fix the problem: Sometimes double click the soruce snippet window will cause a dead loop.
@@ -78,7 +81,7 @@ else
 endif
 "}}}
 " Check for Vim version 700 or greater {{{
-let g:ccvext_version = "4.4.0"
+let g:ccvext_version = "4.5.0"
 
 if v:version < 700
     echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
@@ -420,11 +423,6 @@ function! DelCscopeSymbs (symbs)
             echo 'debug_flg: l:name:' . l:name
         endif
 
-		echo s:platform_inde['setting']['cscope.out_l'][1]
-
-        echo 'debug_flg: l:cmp_s:' . l:cmp_s
-        echo 'debug_flg: l:name:' . l:name
-
         if l:cmp_s == l:name
             "cscope.out alread set, remove it
             echo 'exec :cs kill ' . l:idx
@@ -618,7 +616,7 @@ endfunction
 "}}}
 "Show config window {{{
 function! OpenConfigWnd (arg)
-    let l:bname = "Help -- [a] Add to environment [d] Delete from environment [D] Delete from environment and remove conspond files"
+    let l:bname = "Help -- [a] Add to environment [d] Delete from environment [D] Delete from environment and remove conspond database files"
     let s:platform_inde['tmp_variable'] = winnr ()
     let l:winnum =  bufwinnr (l:bname)
     "If the list window is open
@@ -937,11 +935,20 @@ function! AutoTagTrace ()
 		echo "Auto close quick snippet window, bacause the main source window is closed."
 		return
 	endif
+	if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
+	 	for l:filetype in s:postfix 
+	 		if matchstr (l:filetype, &ft) != "" && &ft != ""
+				call TagTrace (expand('<cfile>'))
+				break
+	 		endif
+	 	endfor
+		return
+	endif
     "forcus on other window
-    if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
-        call TagTrace (expand('<cfile>'))
-        return
-    endif
+    "if winnr () == FindMarkedWindow (1, 'main_source_window_mark')
+	"	call TagTrace (expand('<cfile>'))
+    "    return
+    "endif
     if winnr () == FindMarkedWindow (1, 'source_snippet_list_wnd')
         if empty (s:tags_l)
         else
