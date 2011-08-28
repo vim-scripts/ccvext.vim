@@ -28,7 +28,12 @@
 "             Command: "EnQuickSnippet" - Start source snippet (a better way to use ctags)
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
-" UPDATE:   4.5.0 {{{
+" UPDATE:   
+"           4.6.0 {{{
+"             Descript:
+"               - Fix the problem the multi cscope connection problem about that connection then 
+"                 disconnection for few times the connection order will confused.
+"           4.5.0
 "             Descript:
 "               - Fix the problem when ccvext work with script bufexplorer.vim
 "           4.4.0
@@ -69,24 +74,19 @@
 "             Rewrite script the previous is JumpInCode.vim
 "           }}}
 "-------------------------------------------CCVEXT-----------------------------------------
-"Development setting {{{
-let s:debug_flg = 'false'
-
-if s:debug_flg == 'false'
-    "if exists("g:ccvext_version")
-    "    finish
-    "endif
-else
-    "null
-endif
-"}}}
+"
+"
 " Check for Vim version 700 or greater {{{
-let g:ccvext_version = "4.5.0"
+"if exists("g:ccvext_version")
+"    finish
+"endif
+let g:ccvext_version = "4.6.0"
 
 if v:version < 700
     echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
     finish
 endif
+
 "}}}
 "Global value declears {{{
 let s:functions = {'_command':{}}
@@ -101,7 +101,7 @@ let s:platform_inde = {
                 \'slash':'/', 'HOME':$HOME . '/.symbs', 'list_f':$HOME . '/.symbs/.l', 'env_f':$HOME . '/.symbs/.evn'
                 \},
             \'setting':{
-                \'tags_l':['./tags'], 'cscope.out_l':[{'idx':0}, {0:'noused'}]
+                \'tags_l':['./tags']
                 \},
             \'tmp_variable':0
             \}
@@ -114,7 +114,7 @@ else
 endif
 "}}}
 "support postfix list {{{
-let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"', '*.cs']
+let s:postfix = ['"*.java"', '"*.h"', '"*.c"', '"*.hpp"', '"*.cpp"', '"*.cc"', '*.cs', '*.js']
 "}}}
 "Check software environment {{{
 if !executable ('ctags')
@@ -146,8 +146,7 @@ function! AddSymbs (symbs)
 
     "tags full path
     let l:symbs_t = s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name . s:platform_inde[s:platform]['slash'] . 'tags'
-
-    echo l:symbs_t
+    "echo l:symbs_t
 
     if filereadable (l:symbs_t) == 0
         echomsg 'Tags not found'
@@ -164,11 +163,6 @@ function! AddSymbs (symbs)
             "remove '/home/user/.symbs/'
             let l:cmp_s = substitute(l:cmp_s, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
 
-            if s:debug_flg == 'true'
-                echo 'debug_flg: l:cmp_s:' . l:cmp_s
-                echo 'debug_flg: l:name:' . l:name
-            endif
-
             if l:cmp_s == l:name
                 "tags name alread set
                 break
@@ -176,30 +170,16 @@ function! AddSymbs (symbs)
         endfor
         "tags name not set
         if l:cmp_s != l:name
-            if s:debug_flg == 'true'
-                echo 'debug_flg: add new tags' . l:symbs_t
-            endif
             call add (s:platform_inde['setting']['tags_l'], l:symbs_t)
         else
-            if s:debug_flg == 'true'
-                echo 'debug_flg: tags:' . l:symbs_t . ' already set.'
-            endif
         endif
 
         let $TAGS_PATH = ''
         for l:idx in s:platform_inde['setting']['tags_l']
             let $TAGS_PATH = $TAGS_PATH . l:idx . ','
         endfor
-        if s:debug_flg == 'true'
-            echo 'debug_flg: $TAGS_PATH:' . $TAGS_PATH
-        endif
         echo ':set tags=' . $TAGS_PATH
         :set tags=$TAGS_PATH 
-
-        if s:debug_flg == 'true'
-            echo 'debug_flg: tags_l info:' 
-            echo s:platform_inde['setting']['tags_l']
-        endif
     endif
 
     """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -210,59 +190,12 @@ function! AddSymbs (symbs)
     if filereadable (l:symbs_c) == 0
         echomsg 'Cscope.out not found'
     else
-        "if cscope.out already set, do nothing
-        for l:idx in keys(s:platform_inde['setting']['cscope.out_l'][1])
-            "get dir name:
-            "eg: 
-            "   l:idx = '/home/user/.symbs/boost/cscope.out'
-            "   l:cmp_s = boost
-            "remove '/cscope.out'
-            let l:cscope_d = s:platform_inde['setting']['cscope.out_l'][1]
-            let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:platform_inde[s:platform]['slash'] . 'cscope.out', '', 'g')
-            "remove '/home/user/.symbs/'
-            let l:cmp_s = substitute(l:cmp_s, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
-
-            if s:debug_flg == 'true'
-                echo 'debug_flg: l:cmp_s:' . l:cmp_s
-                echo 'debug_flg: l:name:' . l:name
-            endif
-
-            if l:cmp_s == l:name
-                "cscope.out alread set
-                break
-            endif
-        endfor
-        if l:cmp_s != l:name
-            "cscope.out not alread set
-            if s:debug_flg == 'true'
-                echo 'l:symbs_c:' . l:symbs_c
-            endif
-            "add record to list assume dict is not empty
-            for l:idx in keys(s:platform_inde['setting']['cscope.out_l'][1])
-                if s:platform_inde['setting']['cscope.out_l'][1][l:idx] == 'noused'
-                    let s:platform_inde['setting']['cscope.out_l'][1][l:idx] = l:symbs_c
-                    break
-                endif
-                "there is no noused slot
-                if s:platform_inde['setting']['cscope.out_l'][0]['idx'] == l:idx
-                    let l:pos = s:platform_inde['setting']['cscope.out_l'][0]['idx']
-                    let s:platform_inde['setting']['cscope.out_l'][0]['idx'] = l:pos + 1
-                    let s:platform_inde['setting']['cscope.out_l'][1][l:pos + 1] = l:symbs_c
-                endif
-            endfor
-            "cscope.out dict is empty (first add)
-            "if empty(s:platform_inde['setting']['cscope.out_l'][1])
-            "    let s:platform_inde['setting']['cscope.out_l'][1][0] = l:symbs_c
-            "    let s:platform_inde['setting']['cscope.out_l'][0]['idx'] = l:cpos + 1
-            "endif
+		if cscope_connection (3, l:symbs_c) == 1
+		else
             let $CSCOPE_DB = l:symbs_c
             echo ':cscope add ' . $CSCOPE_DB
-            :cs add $CSCOPE_DB
-        else
-            "cscope.out alread set
-            echomsg 'Database [' . l:symbs_c  . ']' . ' already added'
-        endif
-        call DevLogOutput ("s:platform_inde['setting']['cscope.out_l']", s:platform_inde['setting']['cscope.out_l'])
+            silent cs add $CSCOPE_DB
+		endif
     endif
 endfunction
 "}}}
@@ -295,11 +228,6 @@ function! DelSymbs (symbs, rm)
         "remove '/home/user/.symbs/'
         let l:cmp_s = substitute(l:cmp_s, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
 
-        if s:debug_flg == 'true'
-            echo 'debug_flg: l:cmp_s:' . l:cmp_s
-            echo 'debug_flg: l:name:' . l:name
-        endif
-
         if l:cmp_s == l:name
             "if tags name exist remove it
             unlet s:platform_inde['setting']['tags_l'][l:loopIdx]
@@ -311,18 +239,11 @@ function! DelSymbs (symbs, rm)
     if l:cmp_s != l:name
         echomsg 'Tags ' . l:symbs_t . ' not set'
     endif
-    if s:debug_flg == 'true'
-        echo 'debug_flg: tags_l info:' 
-        echo s:platform_inde['setting']['tags_l']
-    endif
 
     let $TAGS_PATH = ''
     for l:idx in s:platform_inde['setting']['tags_l']
         let $TAGS_PATH = $TAGS_PATH . l:idx . ','
     endfor
-    if s:debug_flg == 'true'
-        echo 'debug_flg: $TAGS_PATH:' . $TAGS_PATH
-    endif
     echo ':set tags=' . $TAGS_PATH
     :set tags=$TAGS_PATH 
 
@@ -332,50 +253,18 @@ function! DelSymbs (symbs, rm)
     let l:cmp_s = ""
     let l:symbs_c = s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name . s:platform_inde[s:platform]['slash'] . 'cscope.out'
     "if cscope.out already set, do nothing
-    for l:idx in keys(s:platform_inde['setting']['cscope.out_l'][1])
-        "get dir name:
-        "eg: 
-        "   l:idx = '/home/user/.symbs/boost/cscope.out'
-        "   l:cmp_s = boost
-
-        "remove '/cscope.out'
-        let l:cscope_d = s:platform_inde['setting']['cscope.out_l'][1]
-        let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:platform_inde[s:platform]['slash'] . 'cscope.out', '', 'g')
-        "remove '/home/user/.symbs/'
-        let l:cmp_s = substitute(l:cmp_s, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
-
-        if s:debug_flg == 'true'
-            echo 'debug_flg: l:cmp_s:' . l:cmp_s
-            echo 'debug_flg: l:name:' . l:name
-        endif
-
-        if l:cmp_s == l:name
-            "cscope.out alread set, remove it
-            echo 'exec :cs kill ' . l:idx
-            exec ':cs kill ' . l:idx
-            "remove from table
-            let s:platform_inde['setting']['cscope.out_l'][1][l:idx] = 'noused'
-            break
-        endif
-    endfor
-    if s:debug_flg == 'true'
-        echo 'debug_flg: tags_l info:' 
-        echo s:platform_inde['setting']['cscope.out_l']
-    endif
-    if l:cmp_s != l:name
-        "cscope.out not alread set
+	let l:cscope_idx = CscopeConnectionID (l:name)
+	if l:cscope_idx != -1
+        echo 'exec :cs kill ' . l:cscope_idx
+        exec ':cs kill ' . l:cscope_idx
+	else
         echomsg 'Database [' . l:symbs_c  . ']' . ' not set'
-    endif
-    call DevLogOutput ("s:platform_inde['setting']['cscope.out_l']", s:platform_inde['setting']['cscope.out_l'])
-
+	endif
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     "remove directory
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     let l:cmp_s = ""
     if a:rm == 'true'
-        if s:debug_flg == 'true'
-            echo 'remove '. s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name  . 'line from .env'
-        endif
         let l:l = LoadConfigData(s:platform_inde[s:platform]['env_f'])
         let l:loopIdx = 0
         for l:idx in l:l
@@ -387,9 +276,6 @@ function! DelSymbs (symbs, rm)
             let l:loopIdx = l:loopIdx + 1
         endfor
         call writefile (l:l, s:platform_inde[s:platform]['env_f'])
-        if s:debug_flg == 'true'
-            echo 'rm -rf ' . s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name
-        endif
         if has ('win32')
             echo system('rd /S /Q ' . s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name)
         else
@@ -405,42 +291,14 @@ function! DelCscopeSymbs (symbs)
     let l:name  = substitute(a:symbs, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
     let l:cmp_s = ""
     let l:symbs_c = s:platform_inde[s:platform]['HOME'] . s:platform_inde[s:platform]['slash'] . l:name . s:platform_inde[s:platform]['slash'] . 'cscope.out'
-    "if cscope.out already set, do nothing
-    for l:idx in keys(s:platform_inde['setting']['cscope.out_l'][1])
-        "get dir name:
-        "eg: 
-        "   l:idx = '/home/user/.symbs/boost/cscope.out'
-        "   l:cmp_s = boost
 
-        "remove '/cscope.out'
-        let l:cscope_d = s:platform_inde['setting']['cscope.out_l'][1]
-        let l:cmp_s = substitute(l:cscope_d[l:idx], '\' . s:platform_inde[s:platform]['slash'] . 'cscope.out', '', 'g')
-        "remove '/home/user/.symbs/'
-        let l:cmp_s = substitute(l:cmp_s, '^.*' . s:platform_inde[s:platform]['slash'], '', 'g')
-
-        if s:debug_flg == 'true'
-            echo 'debug_flg: l:cmp_s:' . l:cmp_s
-            echo 'debug_flg: l:name:' . l:name
-        endif
-
-        if l:cmp_s == l:name
-            "cscope.out alread set, remove it
-            echo 'exec :cs kill ' . l:idx
-            exec ':cs kill ' . l:idx
-            "remove from table
-            let s:platform_inde['setting']['cscope.out_l'][1][l:idx] = 'noused'
-            break
-        endif
-    endfor
-    if s:debug_flg == 'true'
-        echo 'debug_flg: tags_l info:' 
-        echo s:platform_inde['setting']['cscope.out_l']
-    endif
-    if l:cmp_s != l:name
-        "cscope.out not alread set
-        echomsg 'Database [' . l:symbs_c  . ']' . ' not set'
-    endif
-    call DevLogOutput ("s:platform_inde['setting']['cscope.out_l']", s:platform_inde['setting']['cscope.out_l'])
+	let l:cscope_idx = CscopeConnectionID (l:name)
+	if l:cscope_idx != -1
+        silent exec ':cs kill ' . l:cscope_idx
+        echomsg 'Database [' . l:symbs_c  . ']' . ' disconnected.'
+	else
+        echomsg 'Database [' . l:symbs_c  . ']' . ' not set.'
+	endif
 endfunction
 "}}}
 "Generate tags files {{{
@@ -679,21 +537,13 @@ function! SynchronizeSource (cur_dir)
     endif
 
     if l:res_t == 'true' || l:res_c == 'true'
-        echo s:platform_inde[s:platform]['env_f']
+        "echo s:platform_inde[s:platform]['env_f']
         call WriteConfig (s:platform_inde[s:platform]['env_f'], getcwd ())
     endif
 endfunction
 "}}}
 " Log the supplied debug message along with the time {{{
 function! DevLogOutput (msg, list)
-    if s:debug_flg == 'true'
-        if 'true' == 'true'
-            exec 'redir >> ' . $HOME . '/ccvext.vim.log'
-            silent echo 'debug_flg: ' . strftime('%H:%M:%S') . ': ' . a:msg . ' : ' . string(a:list)
-            redir END
-        endif
-        echo 'debug_flg: ' . strftime('%H:%M:%S') . ': ' . a:msg . ' : ' . string(a:list) . "\n"
-    endif
 endfunction
 "}}}
 "Config Symbs {{{
@@ -859,18 +709,9 @@ function! TagTrace (tag_s)
         call MarkWindow ('source_snippet_list_wnd')
     endif
 
-    if s:debug_flg == 'true'
-        echo a:tag_s
-    endif
-
     "let l:escaped_tag = escape(escape(escape(escape(a:tag_s, '*'), '"'), '~'), ':')
     "let s:tags_l = taglist (l:escaped_tag)
     let s:tags_l = taglist (escape(a:tag_s, '~'))
-
-    "debug control
-    if s:debug_flg == 'true'
-        echo s:tags_l
-    endif
 
     "jump to s:src_snippet_list_wnd
     :call GoToMaredWindow (1, 'source_snippet_list_wnd')
@@ -1210,19 +1051,28 @@ endif
 ":map <Leader>se :call EnQuickSnippet () <CR>
 ":map <Leader>sd :call DiQuickSnippet () <CR>
 "}}}
-"Test Test Test Test {{{
-function! Test ()
-	"let slot_id_str = matchstr (getline ("."), "^[ |0-9][0-9]")
-	"let slot_id = -1;
-	"if slot_id_str != ""
-	"	let slot_id = eval (slot_id_str)
-	"else
-	"	"do nothing
-	"endif
-	"echo slot_id
-	"let cscope_db_uri = matchstr (getline ("."), "[\\|\/][^ ]*")
-	"echo slot_id
+"Test {{{
+function! CscopeConnectionID (id)
+	redir! > $VIM/tmp
+	silent cs show 
+	redir END
+
+	let l:temp_file_path = $VIM . "\\tmp"
+
+	let l:fdata = []
+	if filereadable (temp_file_path)
+		let l:fdata = readfile (temp_file_path)
+		for i in l:fdata
+			if match (i, a:id) != -1
+				let l:idx = matchstr(i, '^ \=[0-9]\+')
+				return l:idx
+			else
+			endif
+		endfor
+	endif
+	return -1
 endfunction
+"}}}
 "
 " vim600:fdm=marker:fdc=4:cms=\ "\ %s:
 
