@@ -29,7 +29,10 @@
 "             Command: "DiQuickSnippet" - Stop source snippet (a better way to use ctags) 
 "           }}}
 " UPDATE:   
-"           4.6.0 {{{
+"           4.7.0 {{{
+"             Descript:
+"               - Fix the problem about permission on Unix like system.
+"           4.6.0 
 "             Descript:
 "               - Fix the problem the multi cscope connection problem about that connection then 
 "                 disconnection for few times the connection order will confused.
@@ -80,7 +83,7 @@
 "if exists("g:ccvext_version")
 "    finish
 "endif
-let g:ccvext_version = "4.6.0"
+let g:ccvext_version = "4.7.0"
 
 if v:version < 700
     echo "Sorry, ccvext" . g:ccvext_version. "\nONLY runs with Vim 7.0 and greater."
@@ -1053,11 +1056,14 @@ endif
 "}}}
 "Test {{{
 function! CscopeConnectionID (id)
-	redir! > $VIM/tmp
+	let $CCVEXT_TMP = s:platform_inde[s:platform]['HOME'] . '/tmp' 
+	redir! > $CCVEXT_TMP
+	"redir! > $VIM/tmp
 	silent cs show 
 	redir END
 
-	let l:temp_file_path = $VIM . "\\tmp"
+	"let l:temp_file_path = $VIM . "\\tmp"
+	let l:temp_file_path = s:platform_inde[s:platform]['HOME'] . '/tmp' 
 
 	let l:fdata = []
 	if filereadable (temp_file_path)
